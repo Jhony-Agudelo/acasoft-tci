@@ -77,7 +77,12 @@ export async function initPgSchema(): Promise<boolean> {
         status VARCHAR(50) NOT NULL,
         nombres VARCHAR(255) NOT NULL,
         apellidos VARCHAR(255) NOT NULL,
-        telefono VARCHAR(100)
+        telefono VARCHAR(100),
+        documento_identidad VARCHAR(100),
+        fecha_nacimiento VARCHAR(50),
+        direccion TEXT,
+        contacto_emergencia VARCHAR(100),
+        parentesco_contacto VARCHAR(100)
       );
     `);
 
@@ -107,8 +112,10 @@ export async function initPgSchema(): Promise<boolean> {
         documento_identidad VARCHAR(100) UNIQUE NOT NULL,
         nombres VARCHAR(255) NOT NULL,
         apellidos VARCHAR(255) NOT NULL,
+        fecha_nacimiento VARCHAR(50),
         edad INTEGER NOT NULL,
         colegio_origen VARCHAR(255) NOT NULL,
+        grado_escolar VARCHAR(100),
         curso_actual VARCHAR(255) NOT NULL,
         jornada_escolar VARCHAR(50) NOT NULL,
         guardian_id VARCHAR(100) NOT NULL REFERENCES guardians(id) ON DELETE CASCADE,
@@ -153,8 +160,8 @@ export async function initPgSchema(): Promise<boolean> {
     if (parseInt(usersCheck.rows[0].count, 10) === 0) {
       for (const u of INITIAL_USERS) {
         await query(
-          'INSERT INTO users (id, email, password_hash, role, status, nombres, apellidos, telefono) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-          [u.id, u.email, u.password_hash, u.role, u.status, u.nombres, u.apellidos, u.telefono || '']
+          'INSERT INTO users (id, email, password_hash, role, status, nombres, apellidos, telefono, documento_identidad, fecha_nacimiento, direccion, contacto_emergencia, parentesco_contacto) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
+          [u.id, u.email, u.password_hash, u.role, u.status, u.nombres, u.apellidos, u.telefono || '', u.documento_identidad || null, u.fecha_nacimiento || null, u.direccion || null, u.contacto_emergencia || null, u.parentesco_contacto || null]
         );
       }
     }
@@ -186,14 +193,16 @@ export async function initPgSchema(): Promise<boolean> {
     if (parseInt(studentsCheck.rows[0].count, 10) === 0) {
       for (const s of INITIAL_STUDENTS) {
         await query(
-          'INSERT INTO students (id, documento_identidad, nombres, apellidos, edad, colegio_origen, curso_actual, jornada_escolar, guardian_id, status, payment_deadline_date, course_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+          'INSERT INTO students (id, documento_identidad, nombres, apellidos, fecha_nacimiento, edad, colegio_origen, grado_escolar, curso_actual, jornada_escolar, guardian_id, status, payment_deadline_date, course_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
           [
             s.id,
             s.documento_identidad,
             s.nombres,
             s.apellidos,
+            s.fecha_nacimiento || null,
             s.edad,
             s.colegio_origen,
+            s.grado_escolar || null,
             s.curso_actual,
             s.jornada_escolar,
             s.guardian_id,
@@ -236,13 +245,18 @@ export async function dbGetUsers(): Promise<User[]> {
     nombres: row.nombres,
     apellidos: row.apellidos,
     telefono: row.telefono || undefined,
+    documento_identidad: row.documento_identidad || undefined,
+    fecha_nacimiento: row.fecha_nacimiento || undefined,
+    direccion: row.direccion || undefined,
+    contacto_emergencia: row.contacto_emergencia || undefined,
+    parentesco_contacto: row.parentesco_contacto || undefined,
   }));
 }
 
 export async function dbSaveUser(user: User): Promise<void> {
   await query(
-    `INSERT INTO users (id, email, password_hash, role, status, nombres, apellidos, telefono)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO users (id, email, password_hash, role, status, nombres, apellidos, telefono, documento_identidad, fecha_nacimiento, direccion, contacto_emergencia, parentesco_contacto)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      ON CONFLICT (id) DO UPDATE SET
        email = EXCLUDED.email,
        password_hash = EXCLUDED.password_hash,
@@ -250,8 +264,13 @@ export async function dbSaveUser(user: User): Promise<void> {
        status = EXCLUDED.status,
        nombres = EXCLUDED.nombres,
        apellidos = EXCLUDED.apellidos,
-       telefono = EXCLUDED.telefono`,
-    [user.id, user.email, user.password_hash, user.role, user.status, user.nombres, user.apellidos, user.telefono || null]
+       telefono = EXCLUDED.telefono,
+       documento_identidad = EXCLUDED.documento_identidad,
+       fecha_nacimiento = EXCLUDED.fecha_nacimiento,
+       direccion = EXCLUDED.direccion,
+       contacto_emergencia = EXCLUDED.contacto_emergencia,
+       parentesco_contacto = EXCLUDED.parentesco_contacto`,
+    [user.id, user.email, user.password_hash, user.role, user.status, user.nombres, user.apellidos, user.telefono || null, user.documento_identidad || null, user.fecha_nacimiento || null, user.direccion || null, user.contacto_emergencia || null, user.parentesco_contacto || null]
   );
 }
 
@@ -286,8 +305,10 @@ export async function dbGetStudents(): Promise<Student[]> {
     documento_identidad: row.documento_identidad,
     nombres: row.nombres,
     apellidos: row.apellidos,
+    fecha_nacimiento: row.fecha_nacimiento || undefined,
     edad: row.edad,
     colegio_origen: row.colegio_origen,
+    grado_escolar: row.grado_escolar || undefined,
     curso_actual: row.curso_actual,
     jornada_escolar: row.jornada_escolar as SchoolDayPeriod,
     guardian_id: row.guardian_id,
@@ -299,14 +320,16 @@ export async function dbGetStudents(): Promise<Student[]> {
 
 export async function dbSaveStudent(student: Student): Promise<void> {
   await query(
-    `INSERT INTO students (id, documento_identidad, nombres, apellidos, edad, colegio_origen, curso_actual, jornada_escolar, guardian_id, status, payment_deadline_date, course_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    `INSERT INTO students (id, documento_identidad, nombres, apellidos, fecha_nacimiento, edad, colegio_origen, grado_escolar, curso_actual, jornada_escolar, guardian_id, status, payment_deadline_date, course_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      ON CONFLICT (id) DO UPDATE SET
        documento_identidad = EXCLUDED.documento_identidad,
        nombres = EXCLUDED.nombres,
        apellidos = EXCLUDED.apellidos,
+       fecha_nacimiento = EXCLUDED.fecha_nacimiento,
        edad = EXCLUDED.edad,
        colegio_origen = EXCLUDED.colegio_origen,
+       grado_escolar = EXCLUDED.grado_escolar,
        curso_actual = EXCLUDED.curso_actual,
        jornada_escolar = EXCLUDED.jornada_escolar,
        guardian_id = EXCLUDED.guardian_id,
@@ -318,8 +341,10 @@ export async function dbSaveStudent(student: Student): Promise<void> {
       student.documento_identidad,
       student.nombres,
       student.apellidos,
+      student.fecha_nacimiento || null,
       student.edad,
       student.colegio_origen,
+      student.grado_escolar || null,
       student.curso_actual,
       student.jornada_escolar,
       student.guardian_id,

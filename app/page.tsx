@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
+import logoApp from '../assets/img/logoApp.png';
 import {
   User,
   Guardian,
@@ -135,6 +137,11 @@ export default function Home() {
     email: '',
     password: 'teacher123',
     telefono: '',
+    documento_identidad: '',
+    fecha_nacimiento: '',
+    direccion: '',
+    contacto_emergencia: '',
+    parentesco_contacto: '',
   });
 
   // --- NEW COURSE FORM STATE ---
@@ -152,8 +159,10 @@ export default function Home() {
     documento_identidad: '',
     nombres: '',
     apellidos: '',
+    fecha_nacimiento: '',
     edad: 8,
     colegio_origen: COLEGIOS_LA_VIRGINIA[0],
+    grado_escolar: 'Primero',
     curso_actual: 'Kids Starter (Nivel A1.1)',
     jornada_escolar: SchoolDayPeriod.TARDE,
     course_id: '', // optional course link
@@ -174,8 +183,10 @@ export default function Home() {
     documento_identidad: '',
     nombres: '',
     apellidos: '',
+    fecha_nacimiento: '',
     edad: 8,
     colegio_origen: COLEGIOS_LA_VIRGINIA[0],
+    grado_escolar: 'Primero',
     curso_actual: 'Kids Starter (Nivel A1.1)',
     jornada_escolar: SchoolDayPeriod.TARDE,
     guardian_nombre_completo: '',
@@ -223,6 +234,24 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // Fetch secure session from HTTP-Only cookie via backend on mount
+    if (typeof window !== 'undefined') {
+      fetch('/api/auth/me')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.user) {
+            setCurrentUser(data.user);
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            setMiddlewareLogs((prev) => [
+              ...prev,
+              { time: timeStr, action: 'Session Restore', status: 'SUCCESS', msg: `Sesión JWT restaurada para ${data.user.email} (${data.user.role})` }
+            ]);
+          }
+        })
+        .catch(err => console.error('Error fetching session:', err));
+    }
+
     // Attempt to synchronize with real PostgreSQL database if it is configured
     const syncWithDatabase = async () => {
       try {
@@ -317,6 +346,7 @@ export default function Home() {
 
       setTimeout(() => {
         setCurrentUser(data.user);
+        setSelectedSidebarView('inicio'); // Reset views to clean default to avoid module structure leak
         setLoginEmail('');
         setLoginPassword('');
         setLoading(false);
@@ -348,10 +378,12 @@ export default function Home() {
   const handleLogout = () => {
     if (currentUser) {
       addLog('Logout Action', 'INFO', `Cierre de sesión seguro para ${currentUser.email}`);
-      setCurrentUser(null);
-      setLoginSuccess(null);
-      setMobileMenuOpen(false);
     }
+    setCurrentUser(null);
+    setLoginSuccess(null);
+    setMobileMenuOpen(false);
+    setSelectedSidebarView('inicio'); // Reset view state immediately to avoid module leaking
+    fetch('/api/auth/logout', { method: 'POST' }).catch(e => console.error(e));
   };
 
   // --- TEACHER CRUD (REGISTER MAESTRO) ---
@@ -646,8 +678,10 @@ export default function Home() {
         documento_identidad: '',
         nombres: '',
         apellidos: '',
+        fecha_nacimiento: '',
         edad: 8,
         colegio_origen: COLEGIOS_LA_VIRGINIA[0],
+        grado_escolar: 'Primero',
         curso_actual: 'Kids Starter (Nivel A1.1)',
         jornada_escolar: SchoolDayPeriod.TARDE,
         course_id: dbCourses.find((c) => c.status === 'ACTIVE')?.id || '',
@@ -680,8 +714,10 @@ export default function Home() {
       documento_identidad: student.documento_identidad,
       nombres: student.nombres,
       apellidos: student.apellidos,
+      fecha_nacimiento: student.fecha_nacimiento || '',
       edad: student.edad,
       colegio_origen: student.colegio_origen,
+      grado_escolar: student.grado_escolar || 'Primero',
       curso_actual: student.curso_actual,
       jornada_escolar: student.jornada_escolar,
       course_id: student.course_id || '',
@@ -702,8 +738,10 @@ export default function Home() {
       documento_identidad: '',
       nombres: '',
       apellidos: '',
+      fecha_nacimiento: '',
       edad: 8,
       colegio_origen: COLEGIOS_LA_VIRGINIA[0],
+      grado_escolar: 'Primero',
       curso_actual: 'Kids Starter (Nivel A1.1)',
       jornada_escolar: SchoolDayPeriod.TARDE,
       course_id: dbCourses.find((c) => c.status === 'ACTIVE')?.id || '',
@@ -747,7 +785,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch('/api/students', {
+      const response = await fetch('/api/enrollment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -890,7 +928,7 @@ export default function Home() {
   };
 
   // --- UPDATE SYSTEM SETTINGS ---
-  const handleUpdateSettings = (e: React.FormEvent) => {
+  const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
 
@@ -902,10 +940,25 @@ export default function Home() {
       return;
     }
 
-    setDbSettings(editedSettings);
-    LocalDbStore.saveSettings(editedSettings);
-    addLog('SystemSettings Update', 'SUCCESS', `Ajustes guardados. Inscripciones abiertas: ${editedSettings.enrollment_open}`);
-    alert('Configuración global del TCI actualizada.');
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedSettings),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error al guardar la configuración');
+      }
+
+      setDbSettings(editedSettings);
+      addLog('SystemSettings Update', 'SUCCESS', `Ajustes guardados. Inscripciones abiertas: ${editedSettings.enrollment_open}`);
+      alert('Configuración global del TCI actualizada.');
+    } catch (err: any) {
+      alert(`Error de red: ${err.message}`);
+      addLog('SystemSettings Update', 'DENIED', `Fallo al guardar: ${err.message}`);
+    }
   };
 
   // --- RESET DATABASE TO DEFAULT SEED ---
@@ -1576,8 +1629,8 @@ CREATE TABLE students (
                                           </span>
                                           <span
                                             className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${course.status === 'ACTIVE'
-                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                              : 'bg-rose-50 text-rose-600 border border-rose-100'
                                               }`}
                                           >
                                             {course.status === 'ACTIVE' ? 'ACTIVO' : 'INACTIVO'}
@@ -1674,10 +1727,10 @@ CREATE TABLE students (
                                               <td className="p-4 text-center">
                                                 <span
                                                   className={`px-2 py-0.5 rounded text-[10px] font-bold ${att.status === AttendanceStatus.PRESENT
-                                                      ? 'bg-emerald-50 text-emerald-600'
-                                                      : att.status === AttendanceStatus.ABSENT
-                                                        ? 'bg-rose-50 text-rose-600'
-                                                        : 'bg-amber-50 text-amber-600'
+                                                    ? 'bg-emerald-50 text-emerald-600'
+                                                    : att.status === AttendanceStatus.ABSENT
+                                                      ? 'bg-rose-50 text-rose-600'
+                                                      : 'bg-amber-50 text-amber-600'
                                                     }`}
                                                 >
                                                   {att.status === AttendanceStatus.PRESENT
@@ -1754,8 +1807,8 @@ CREATE TABLE students (
                                       <div
                                         key={student.id}
                                         className={`py-4 px-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-4 transition-all duration-200 border border-transparent ${isBlocked
-                                            ? 'bg-rose-50/60 border-rose-100/80 my-1.5'
-                                            : 'hover:bg-slate-50/55'
+                                          ? 'bg-rose-50/60 border-rose-100/80 my-1.5'
+                                          : 'hover:bg-slate-50/55'
                                           }`}
                                       >
                                         <div className="flex gap-3 items-start">
@@ -1789,10 +1842,10 @@ CREATE TABLE students (
                                               }))
                                             }
                                             className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${isBlocked
-                                                ? 'opacity-30 cursor-not-allowed text-slate-400'
-                                                : currentStatus === AttendanceStatus.PRESENT
-                                                  ? 'bg-emerald-600 text-white shadow-xs cursor-pointer'
-                                                  : 'text-slate-600 hover:bg-slate-100 cursor-pointer'
+                                              ? 'opacity-30 cursor-not-allowed text-slate-400'
+                                              : currentStatus === AttendanceStatus.PRESENT
+                                                ? 'bg-emerald-600 text-white shadow-xs cursor-pointer'
+                                                : 'text-slate-600 hover:bg-slate-100 cursor-pointer'
                                               }`}
                                           >
                                             PRESENTE
@@ -1807,10 +1860,10 @@ CREATE TABLE students (
                                               }))
                                             }
                                             className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${isBlocked
-                                                ? 'bg-rose-600 text-white opacity-80 cursor-not-allowed font-medium shadow-xs'
-                                                : currentStatus === AttendanceStatus.ABSENT
-                                                  ? 'bg-rose-600 text-white shadow-xs cursor-pointer'
-                                                  : 'text-slate-600 hover:bg-slate-100 cursor-pointer'
+                                              ? 'bg-rose-600 text-white opacity-80 cursor-not-allowed font-medium shadow-xs'
+                                              : currentStatus === AttendanceStatus.ABSENT
+                                                ? 'bg-rose-600 text-white shadow-xs cursor-pointer'
+                                                : 'text-slate-600 hover:bg-slate-100 cursor-pointer'
                                               }`}
                                           >
                                             AUSENTE
@@ -1825,10 +1878,10 @@ CREATE TABLE students (
                                               }))
                                             }
                                             className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${isBlocked
-                                                ? 'opacity-30 cursor-not-allowed text-slate-400'
-                                                : currentStatus === AttendanceStatus.EXCUSED
-                                                  ? 'bg-amber-500 text-white shadow-xs cursor-pointer'
-                                                  : 'text-slate-600 hover:bg-slate-100 cursor-pointer'
+                                              ? 'opacity-30 cursor-not-allowed text-slate-400'
+                                              : currentStatus === AttendanceStatus.EXCUSED
+                                                ? 'bg-amber-500 text-white shadow-xs cursor-pointer'
+                                                : 'text-slate-600 hover:bg-slate-100 cursor-pointer'
                                               }`}
                                           >
                                             EXCUSADO
@@ -2082,8 +2135,8 @@ CREATE TABLE students (
                                   <div className="flex justify-between text-[9px]">
                                     <span className="text-slate-500">{log.time}</span>
                                     <span className={`px-1 rounded font-bold uppercase ${log.status === 'SUCCESS' ? 'bg-emerald-950/50 text-emerald-400' :
-                                        log.status === 'DENIED' ? 'bg-rose-950/50 text-rose-400 font-black' :
-                                          'bg-blue-950/50 text-blue-400'
+                                      log.status === 'DENIED' ? 'bg-rose-950/50 text-rose-400 font-black' :
+                                        'bg-blue-950/50 text-blue-400'
                                       }`}>
                                       {log.status}
                                     </span>
@@ -2252,6 +2305,20 @@ CREATE TABLE students (
                                   </div>
 
                                   <div>
+                                    <label className="block text-[10px] font-bold font-mono uppercase text-slate-500 mb-1">Fecha de Nacimiento *</label>
+                                    <input
+                                      type="date"
+                                      required
+                                      value={newStudentForm.fecha_nacimiento}
+                                      onChange={(e) => setNewStudentForm({ ...newStudentForm, fecha_nacimiento: e.target.value })}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#fc7609] focus:outline-none text-xs"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+
+                                  <div>
                                     <label className="block text-[10px] font-bold font-mono uppercase text-slate-500 mb-1">Edad (Años)</label>
                                     <input
                                       type="number"
@@ -2301,6 +2368,21 @@ CREATE TABLE students (
                                     </select>
                                   </div>
 
+                                  <div>
+                                    <label className="block text-[10px] font-bold font-mono uppercase text-slate-500 mb-1">Grado Escolar</label>
+                                    <select
+                                      value={newStudentForm.grado_escolar}
+                                      onChange={(e) => setNewStudentForm({ ...newStudentForm, grado_escolar: e.target.value })}
+                                      className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#fc7609]"
+                                    >
+                                      {['Preescolar', 'Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo', 'Noveno', 'Décimo', 'Once'].map(grado => (
+                                        <option key={grado} value={grado}>{grado}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                   <div>
                                     <label className="block text-[10px] font-bold font-mono uppercase text-slate-500 mb-1">Jornada escolar ordinaria</label>
                                     <select
@@ -2478,6 +2560,7 @@ CREATE TABLE students (
                                     <td className="p-3">
                                       <span className="font-extrabold text-slate-800 font-display block leading-none">{st.nombres} {st.apellidos}</span>
                                       <span className="font-mono text-[9px] text-[#fc7609] font-bold block mt-1 uppercase">Doc: {st.documento_identidad}</span>
+                                      {st.fecha_nacimiento && <span className="font-mono text-[9px] text-slate-400 font-bold block mt-0.5">Nacimiento: {st.fecha_nacimiento}</span>}
                                     </td>
                                     <td className="p-3 font-semibold text-slate-700">
                                       {st.edad} años
@@ -2485,6 +2568,7 @@ CREATE TABLE students (
                                     </td>
                                     <td className="p-3 text-slate-500">
                                       {st.colegio_origen}
+                                      {st.grado_escolar && <span className="block text-[10px] text-slate-400 font-mono uppercase font-bold mt-1">Grado: {st.grado_escolar}</span>}
                                     </td>
                                     <td className="p-3 font-medium text-slate-700">
                                       {assignedCourse ? (
@@ -2585,8 +2669,8 @@ CREATE TABLE students (
                                   <button
                                     onClick={() => handleToggleUserStatus(t.id)}
                                     className={`py-1 px-2.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer border ${t.status === UserStatus.ACTIVE
-                                        ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
-                                        : 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
+                                      ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                                      : 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
                                       }`}
                                   >
                                     {t.status === UserStatus.ACTIVE ? 'Desactivar Cuenta' : 'Activar Cuenta'}
@@ -2632,6 +2716,28 @@ CREATE TABLE students (
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-slate-600 font-mono mb-1">Doc. Identidad *</label>
+                            <input
+                              type="text"
+                              required
+                              value={newTeacherForm.documento_identidad}
+                              onChange={(e) => setNewTeacherForm({ ...newTeacherForm, documento_identidad: e.target.value })}
+                              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#fc7609] text-xs focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-slate-600 font-mono mb-1">Fecha Nacimiento</label>
+                            <input
+                              type="date"
+                              value={newTeacherForm.fecha_nacimiento}
+                              onChange={(e) => setNewTeacherForm({ ...newTeacherForm, fecha_nacimiento: e.target.value })}
+                              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#fc7609] text-xs focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
                         <div>
                           <label className="block text-[9px] font-bold uppercase text-slate-600 font-mono mb-1">Correo Docente *</label>
                           <input
@@ -2653,6 +2759,37 @@ CREATE TABLE students (
                             onChange={(e) => setNewTeacherForm({ ...newTeacherForm, telefono: e.target.value })}
                             className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#fc7609] text-xs focus:outline-none"
                           />
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase text-slate-600 font-mono mb-1">Dirección</label>
+                          <input
+                            type="text"
+                            value={newTeacherForm.direccion}
+                            onChange={(e) => setNewTeacherForm({ ...newTeacherForm, direccion: e.target.value })}
+                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#fc7609] text-xs focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-slate-600 font-mono mb-1">Contacto Emerg.</label>
+                            <input
+                              type="text"
+                              value={newTeacherForm.contacto_emergencia}
+                              onChange={(e) => setNewTeacherForm({ ...newTeacherForm, contacto_emergencia: e.target.value })}
+                              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#fc7609] text-xs focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-slate-600 font-mono mb-1">Parentesco</label>
+                            <input
+                              type="text"
+                              value={newTeacherForm.parentesco_contacto}
+                              onChange={(e) => setNewTeacherForm({ ...newTeacherForm, parentesco_contacto: e.target.value })}
+                              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#fc7609] text-xs focus:outline-none"
+                            />
+                          </div>
                         </div>
 
                         <div>
@@ -3050,12 +3187,14 @@ CREATE TABLE students (
                                           <td className="p-3">
                                             <span className="font-extrabold text-slate-800 font-display block leading-none">{st.nombres} {st.apellidos}</span>
                                             <span className="font-mono text-[9px] text-[#fc7609] font-bold block mt-1 uppercase">Doc: {st.documento_identidad}</span>
+                                            {st.fecha_nacimiento && <span className="font-mono text-[9px] text-slate-400 font-bold block mt-0.5">Nacimiento: {st.fecha_nacimiento}</span>}
                                           </td>
                                           <td className="p-3 font-semibold text-slate-700">
                                             {st.edad} años
                                           </td>
                                           <td className="p-3 text-slate-500">
                                             {st.colegio_origen}
+                                            {st.grado_escolar && <span className="block text-[10px] text-slate-400 font-mono uppercase font-bold mt-1">Grado: {st.grado_escolar}</span>}
                                           </td>
                                           <td className="p-3 uppercase font-mono font-bold text-slate-400">
                                             {st.jornada_escolar}
@@ -3630,8 +3769,8 @@ CREATE TABLE students (
                                     <tr
                                       key={student.id}
                                       className={`transition-colors duration-150 ${isBlocked
-                                          ? 'bg-rose-50/30 hover:bg-rose-50/50'
-                                          : 'hover:bg-slate-50/60'
+                                        ? 'bg-rose-50/30 hover:bg-rose-50/50'
+                                        : 'hover:bg-slate-50/60'
                                         }`}
                                     >
                                       <td className="p-4 font-mono text-[10px] text-slate-400">
@@ -3843,11 +3982,10 @@ CREATE TABLE students (
                   {/* Left Side: Editorial Banner */}
                   <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
                     <div className="h-14 w-14 rounded-2xl bg-[#fc7609] flex items-center justify-center text-white font-display text-2xl font-bold shadow-md shadow-orange-500/20">
-                      🎨
+                      TCI
                     </div>
                     <div>
                       <h2 className="font-display text-3xl font-black text-slate-800 leading-tight">
-                        TCI <br />
                         <span className="text-[#fc7609]">Taller Creativo De Inglés</span>
                       </h2>
                       <p className="text-xs text-slate-400 font-mono tracking-wider font-bold uppercase mt-1">
@@ -3938,8 +4076,10 @@ CREATE TABLE students (
                                 documento_identidad: '',
                                 nombres: '',
                                 apellidos: '',
+                                fecha_nacimiento: '',
                                 edad: 8,
                                 colegio_origen: COLEGIOS_LA_VIRGINIA[0],
+                                grado_escolar: 'Primero',
                                 curso_actual: 'Kids Starter (Nivel A1.1)',
                                 jornada_escolar: SchoolDayPeriod.TARDE,
                                 guardian_nombre_completo: '',
@@ -3984,6 +4124,35 @@ CREATE TABLE students (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
+                                    Nombres Completos*
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Ej: David Ignacio"
+                                    value={publicEnrollmentForm.nombres}
+                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, nombres: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
+                                    Apellidos*
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Ej: Restrepo Bermúdez"
+                                    value={publicEnrollmentForm.apellidos}
+                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, apellidos: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
                                     Documento de Identidad (Id)*
                                   </label>
                                   <input
@@ -3995,7 +4164,21 @@ CREATE TABLE students (
                                     className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50 font-mono"
                                   />
                                 </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
+                                    Fecha de Nacimiento*
+                                  </label>
+                                  <input
+                                    type="date"
+                                    required
+                                    value={publicEnrollmentForm.fecha_nacimiento}
+                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, fecha_nacimiento: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50 font-mono"
+                                  />
+                                </div>
+                              </div>
 
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
                                     <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
@@ -4030,35 +4213,6 @@ CREATE TABLE students (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
-                                    Nombres Completos*
-                                  </label>
-                                  <input
-                                    type="text"
-                                    required
-                                    placeholder="Ej: David Ignacio"
-                                    value={publicEnrollmentForm.nombres}
-                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, nombres: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
-                                    Apellidos*
-                                  </label>
-                                  <input
-                                    type="text"
-                                    required
-                                    placeholder="Ej: Restrepo Bermúdez"
-                                    value={publicEnrollmentForm.apellidos}
-                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, apellidos: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
                                     Colegio de Origen (La Virginia)*
                                   </label>
                                   <select
@@ -4073,17 +4227,16 @@ CREATE TABLE students (
                                 </div>
                                 <div>
                                   <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
-                                    Programa / Nivel de Interés
+                                    Grado Escolar
                                   </label>
                                   <select
-                                    value={publicEnrollmentForm.curso_actual}
-                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, curso_actual: e.target.value }))}
+                                    value={publicEnrollmentForm.grado_escolar}
+                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, grado_escolar: e.target.value }))}
                                     className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
                                   >
-                                    <option value="Kids Starter (Nivel A1.1)">Kids Starter (Nivel A1.1)</option>
-                                    <option value="Kids Beginner (Nivel A1.2)">Kids Beginner (Nivel A1.2)</option>
-                                    <option value="Junior Intermediate (Nivel A2.1)">Junior Intermediate (Nivel A2.1)</option>
-                                    <option value="Youth Advanced (Nivel B1)">Youth Advanced (Nivel B1)</option>
+                                    {['Preescolar', 'Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo', 'Noveno', 'Décimo', 'Once'].map(grado => (
+                                      <option key={grado} value={grado}>{grado}</option>
+                                    ))}
                                   </select>
                                 </div>
                               </div>
@@ -4222,11 +4375,8 @@ CREATE TABLE students (
                     <div className="bg-white rounded-3xl shadow-xl border border-orange-100 p-6 md:p-8" id="login_card">
                       {/* LOGO SPACE PRE-POPULATED */}
                       <div className="flex flex-col items-center mb-6 text-center">
-                        <div className="w-full max-w-[210px] aspect-3/1 bg-gradient-to-tr from-orange-50 to-[#ffedd5] rounded-xl border border-dashed border-[#fc7609]/40 flex flex-col items-center justify-center p-2 text-[#fc7609] relative overflow-hidden">
-                          <span className="text-[9px] font-bold font-mono text-slate-450 uppercase mb-0.5 tracking-wider">Logo Institucional</span>
-                          <span className="font-display font-extrabold text-xs tracking-tight text-slate-800 bg-white/80 px-2 py-0.5 rounded border border-orange-100">
-                            🎨 Taller Creativo.jpg
-                          </span>
+                        <div className="w-full max-w-[210px] h-[70px] relative overflow-hidden">
+                          <Image src={logoApp} alt="Taller Creativo Logo" className="object-contain" fill priority />
                         </div>
                       </div>
 

@@ -30,6 +30,11 @@ export interface User {
   nombres: string;
   apellidos: string;
   telefono?: string;
+  documento_identidad?: string;
+  fecha_nacimiento?: string;
+  direccion?: string;
+  contacto_emergencia?: string;
+  parentesco_contacto?: string;
 }
 
 export interface Guardian {
@@ -45,8 +50,10 @@ export interface Student {
   documento_identidad: string; // Unique
   nombres: string;
   apellidos: string;
+  fecha_nacimiento?: string;
   edad: number;
   colegio_origen: string; // From the predefined list of La Virginia, Risaralda
+  grado_escolar?: string;
   curso_actual: string;
   jornada_escolar: SchoolDayPeriod;
   guardian_id: string; // Reference to Guardian
@@ -112,181 +119,112 @@ export const COLEGIOS_LA_VIRGINIA = [
 // Seed Data for initial testing
 export const INITIAL_USERS: User[] = [
   {
-    id: 'usr_dir',
-    email: 'director@translinguakids.com',
-    password_hash: 'director123', // Clean text for demo/MVP purposes
-    role: UserRole.DIRECTOR,
-    status: UserStatus.ACTIVE,
-    nombres: 'María Camila',
-    apellidos: 'Gómez Restrepo',
-    telefono: '3124567890',
-  },
-  {
-    id: 'usr_adm',
-    email: 'admin@translinguakids.com',
-    password_hash: 'admin123',
+    id: 'usr_admin',
+    email: 'jhony.agudelo@tci.com',
+    password_hash: '$2b$10$kD5xMDkIXEWt0YGDEPvnDe2merErxYB3hK.vGVFseqSh7xnGGzGZ6', // 1004627290
     role: UserRole.ADMIN,
     status: UserStatus.ACTIVE,
-    nombres: 'Andrés Felipe',
-    apellidos: 'Ríos Cardona',
-    telefono: '3159876543',
+    nombres: 'Jhony Estevan',
+    apellidos: 'Agudelo',
+    telefono: '3174682253',
+    documento_identidad: '1004627290',
+    fecha_nacimiento: '14/06/1998',
+    direccion: 'Calle 16A #8-75 El Prado',
+    contacto_emergencia: '3197927849',
+    parentesco_contacto: 'Esposa Admin'
   },
   {
     id: 'usr_t1',
-    email: 'teacher.ana@translinguakids.com',
-    password_hash: 'teacher123',
+    email: 'sara.fernandez@tci.com',
+    password_hash: '$2b$10$cqgKpLj8Tv/MuaB.RpyJROn.WIIXCQiBmKjkZBeIi8PD0ogqMVYEa', // 1087550216
     role: UserRole.TEACHER,
     status: UserStatus.ACTIVE,
-    nombres: 'Estefanía (Ana)',
-    apellidos: 'López Osorio',
-    telefono: '3206543210',
+    nombres: 'Sara',
+    apellidos: 'Fernández Sánchez',
+    telefono: '3137814442',
+    documento_identidad: '1087550216',
+    fecha_nacimiento: '27/octubre/2006',
+    direccion: 'Carrera 6a #6-42 Barrio Bavaria',
+    contacto_emergencia: '3126222311',
+    parentesco_contacto: 'Mamá Maestro'
   },
   {
     id: 'usr_t2',
-    email: 'teacher.carlos@translinguakids.com',
-    password_hash: 'teacher123',
+    email: 'mariana.usuga@tci.com',
+    password_hash: '$2b$10$q5IKfGH7H7b7JLXXYH2II.a/hIlyGoAOY5vmucZDa5ORnMCVHgT5m', // 1088240764
     role: UserRole.TEACHER,
     status: UserStatus.ACTIVE,
-    nombres: 'Carlos Mario',
-    apellidos: 'Gutiérrez Díaz',
-    telefono: '3112345678',
+    nombres: 'Mariana',
+    apellidos: 'Usuga Marmolejo',
+    telefono: '3103752612',
+    documento_identidad: '1088240764',
+    fecha_nacimiento: '1/julio/2004',
+    direccion: 'CRA 21 #3-14 Los libertadores',
+    contacto_emergencia: '3182430900',
+    parentesco_contacto: 'Mamá maestro'
   },
   {
-    id: 'usr_inactivo',
-    email: 'inactivo@translinguakids.com',
-    password_hash: 'inactivo123',
+    id: 'usr_t3',
+    email: 'isabella.castaneda@tci.com',
+    password_hash: '$2b$10$AzyhKo6paXNPJ3ACF5Un0.wxDs6Q77if9U4TqG4JUTVc9SfEyzvtS', // 1086635038
     role: UserRole.TEACHER,
-    status: UserStatus.INACTIVE,
-    nombres: 'Profesor Inactivo',
-    apellidos: 'Prueba de Seguridad',
-    telefono: '3000000000',
+    status: UserStatus.ACTIVE,
+    nombres: 'Isabella',
+    apellidos: 'Castañeda Galvis',
+    telefono: '3148450317',
+    documento_identidad: '1086635038',
+    fecha_nacimiento: '27/noviembre/2007',
+    direccion: 'Calle 19a # 11-22 Expansion norte',
+    contacto_emergencia: '3215678861',
+    parentesco_contacto: 'Mamá Maestro'
+  },
+  {
+    id: 'usr_t4',
+    email: 'luisa.canizales@tci.com',
+    password_hash: '$2b$10$qOnduLpWheUEqO5tArom6ehi5Okm0RbE.pZ0bQE7XTn4wKPwvLyUW', // 1007220836
+    role: UserRole.DIRECTOR,
+    status: UserStatus.ACTIVE,
+    nombres: 'Luisa Fernanda',
+    apellidos: 'Cañizales Ossa',
+    telefono: '3197927849',
+    documento_identidad: '1007220836',
+    fecha_nacimiento: '1/junio/1999',
+    direccion: 'Calle 16A #8-75 El Prado',
+    contacto_emergencia: '3174682253',
+    parentesco_contacto: 'Esposo directora'
   }
 ];
 
 export const INITIAL_GUARDIANS: Guardian[] = [
   {
-    id: 'grd_1',
-    nombre_completo: 'Luz Marina Arenas',
-    direccion: 'Calle 10 # 5-21, Barrio Centro, La Virginia',
-    telefono: '3147778899',
-    parentesco: 'Madre',
-  },
-  {
-    id: 'grd_2',
-    nombre_completo: 'Jorge Eliécer Salazar',
-    direccion: 'Carrera 8 # 12-45, Barrio Balsillas, La Virginia',
-    telefono: '3105556677',
-    parentesco: 'Padre',
-  },
-  {
-    id: 'grd_3',
-    nombre_completo: 'Alba Lucía Bermúdez',
-    direccion: 'Avenida de la Ceiba # 18-09, La Virginia',
-    telefono: '3183334455',
-    parentesco: 'Tutor Legal (Abuela)',
-  },
+    id: 'grd_martin',
+    nombre_completo: 'Daniela Cañizales',
+    direccion: 'Cra 10 18 b 61',
+    telefono: '3228052848',
+    parentesco: 'Mamá',
+  }
 ];
 
 export const INITIAL_STUDENTS: Student[] = [
   {
-    id: 'std_1',
-    documento_identidad: '1088456123',
-    nombres: 'Samuel Alejandro',
-    apellidos: 'Salazar Arenas',
-    edad: 8,
-    colegio_origen: 'Institución Educativa Bernardo Arias Trujillo',
-    curso_actual: 'Kids Starter (Nivel A1.1)',
-    jornada_escolar: SchoolDayPeriod.TARDE,
-    guardian_id: 'grd_1',
-    status: StudentStatus.ACTIVE,
-    payment_deadline_date: '2026-06-05',
-    course_id: 'crs_1',
-  },
-  {
-    id: 'std_2',
-    documento_identidad: '1099234567',
-    nombres: 'Juliana María',
-    apellidos: 'Salazar Arenas',
-    edad: 10,
-    colegio_origen: 'Institución Educativa Bernardo Arias Trujillo',
-    curso_actual: 'Kids Intermediate (Nivel A1.2)',
-    jornada_escolar: SchoolDayPeriod.TARDE,
-    guardian_id: 'grd_1',
-    status: StudentStatus.IN_INTERVIEW,
-    payment_deadline_date: '2026-06-10',
-    course_id: null,
-  },
-  {
-    id: 'std_3',
-    documento_identidad: '1102456789',
-    nombres: 'Mateo',
-    apellidos: 'Ríos Bermúdez',
+    id: 'std_martin',
+    documento_identidad: '1089638020',
+    nombres: 'Martín',
+    apellidos: 'Hincapié Cañizales',
+    fecha_nacimiento: '14/3/2019',
     edad: 6,
     colegio_origen: 'Colegio Nuestra Señora de la Presentación',
-    curso_actual: 'Preschool Explorer',
-    jornada_escolar: SchoolDayPeriod.MANANA,
-    guardian_id: 'grd_3',
-    status: StudentStatus.REGISTERED,
-    payment_deadline_date: '2026-06-15',
-    course_id: null,
-  },
-  {
-    id: 'std_4',
-    documento_identidad: '1085112233',
-    nombres: 'Sofía',
-    apellidos: 'Velasquez Henao',
-    edad: 12,
-    colegio_origen: 'Institución Educativa Gabriela Mistral',
-    curso_actual: 'Teens English Pre-A2',
+    grado_escolar: 'Primero',
+    curso_actual: 'Kids Starter',
     jornada_escolar: SchoolDayPeriod.TARDE,
-    guardian_id: 'grd_2',
-    status: StudentStatus.ACTIVE,
-    payment_deadline_date: '2026-06-02',
-    course_id: 'crs_2',
+    guardian_id: 'grd_martin',
+    status: StudentStatus.REGISTERED,
+    payment_deadline_date: '2026-06-30',
+    course_id: null,
   }
 ];
 
-export const INITIAL_COURSES: Course[] = [
-  {
-    id: 'crs_1',
-    nombre_curso: 'Kids English Starter - Gr. A',
-    teacher_id: 'usr_t1', // Teacher Ana
-    status: 'ACTIVE',
-    schedule: [
-      { day: 'Lunes', start_time: '14:00', end_time: '16:00' },
-      { day: 'Miércoles', start_time: '14:00', end_time: '16:00' }
-    ]
-  },
-  {
-    id: 'crs_2',
-    nombre_curso: 'Preschool Explorer - Gr. B',
-    teacher_id: 'usr_t2', // Teacher Carlos
-    status: 'ACTIVE',
-    schedule: [
-      { day: 'Martes', start_time: '09:00', end_time: '11:00' },
-      { day: 'Jueves', start_time: '09:00', end_time: '11:00' }
-    ]
-  },
-  {
-    id: 'crs_3',
-    nombre_curso: 'Kids Intermediate - Gr. A',
-    teacher_id: 'usr_t1', // Teacher Ana
-    status: 'ACTIVE',
-    schedule: [
-      { day: 'Lunes', start_time: '16:00', end_time: '18:00' },
-      { day: 'Miércoles', start_time: '16:00', end_time: '18:00' }
-    ]
-  },
-  {
-    id: 'crs_4',
-    nombre_curso: 'Teens English - Gr. C',
-    teacher_id: 'usr_t2', // Teacher Carlos
-    status: 'INACTIVE',
-    schedule: [
-      { day: 'Sábado', start_time: '08:00', end_time: '12:00' }
-    ]
-  }
-];
+export const INITIAL_COURSES: Course[] = [];
 
 export const INITIAL_SETTINGS: SystemSettings = {
   id: 'global_settings',
@@ -295,19 +233,4 @@ export const INITIAL_SETTINGS: SystemSettings = {
   institution_name: 'TCI - Taller Creativo De Inglés',
 };
 
-export const INITIAL_PAYMENTS: Payment[] = [
-  {
-    id: 'pay_1',
-    student_id: 'std_1',
-    amount: 150000,
-    payment_date: '2026-05-05',
-    period_covered: 'Mayo 2026'
-  },
-  {
-    id: 'pay_2',
-    student_id: 'std_4',
-    amount: 150000,
-    payment_date: '2026-05-02',
-    period_covered: 'Mayo 2026'
-  }
-];
+export const INITIAL_PAYMENTS: Payment[] = [];

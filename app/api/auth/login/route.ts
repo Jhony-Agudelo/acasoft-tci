@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
 import { User, UserStatus, INITIAL_USERS } from '@/lib/db-schema';
 import { validateUserStatus } from '@/lib/auth-middleware';
 import { isPgConfigured, dbGetUsers } from '@/lib/pg-db';
+import { signJwt } from '@/lib/jwt';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,8 +51,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Simple plain password match for MVP
-    if (user.password_hash !== password) {
+    // Verify hash
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
       return NextResponse.json(
         { success: false, error: 'Credenciales inválidas: Contraseña incorrecta.' },
         { status: 401 }
@@ -66,17 +70,34 @@ export async function POST(req: NextRequest) {
     }
 
     // Successful login
+    const sessionUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      nombres: user.nombres,
+      apellidos: user.apellidos,
+    };
+
+    // Sign the JWT
+    const token = await signJwt({ user: sessionUser });
+
+    // Set HTTP-Only Cookie
+    const cookieStore = await cookies();
+    cookieStore.set({
+      name: 'tci_session',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24, // 1 day
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Inicio de sesión exitoso',
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        nombres: user.nombres,
-        apellidos: user.apellidos,
-      },
+      user: sessionUser,
     });
   } catch (error: any) {
     return NextResponse.json(

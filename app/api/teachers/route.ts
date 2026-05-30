@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { User, UserRole, UserStatus } from '@/lib/db-schema';
 import { isPgConfigured, dbSaveUser, dbGetUsers } from '@/lib/pg-db';
+import bcrypt from 'bcryptjs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombres, apellidos, email, password, telefono, clientUsers } = body;
+    const { nombres, apellidos, email, password, telefono, documento_identidad, fecha_nacimiento, direccion, contacto_emergencia, parentesco_contacto, clientUsers } = body;
 
     if (!nombres || !apellidos || !email || !password) {
       return NextResponse.json(
@@ -47,16 +48,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Create new Teacher
     const newTeacher: User = {
       id: `usr_${Date.now()}`,
       email: email.toLowerCase().trim(),
-      password_hash: password, // Raw password for representation
+      password_hash: hashedPassword, // Hashed with bcrypt
       role: UserRole.TEACHER,
       status: UserStatus.ACTIVE,
       nombres,
       apellidos,
       telefono: telefono || '',
+      documento_identidad: documento_identidad || '',
+      fecha_nacimiento: fecha_nacimiento || '',
+      direccion: direccion || '',
+      contacto_emergencia: contacto_emergencia || '',
+      parentesco_contacto: parentesco_contacto || '',
     };
 
     if (isPgConfigured()) {
