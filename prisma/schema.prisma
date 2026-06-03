@@ -61,6 +61,7 @@ model students {
   status                String       @db.VarChar(50)
   payment_deadline_date String       @db.VarChar(50)
   course_id             String?      @db.VarChar(100)
+  avatar_url            String?      @db.Text
   attendance            attendance[]
   payments              payments[]
   courses               courses?     @relation(fields: [course_id], references: [id], onUpdate: NoAction)
@@ -88,5 +89,18 @@ model users {
   direccion           String?
   contacto_emergencia String?   @db.VarChar(100)
   parentesco_contacto String?   @db.VarChar(100)
+  avatar_url          String?   @db.Text
   courses             courses[]
+  expenses            expenses[]
+}
+
+model expenses {
+  id              String   @id @db.VarChar(100)
+  amount          Float
+  date            String   @db.VarChar(50)
+  category        String   @db.VarChar(100)
+  description     String   @db.Text
+  recipient_name  String?  @db.VarChar(255)
+  teacher_id      String?  @db.VarChar(100)
+  users           users?   @relation(fields: [teacher_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 }

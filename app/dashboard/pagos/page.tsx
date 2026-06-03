@@ -1,0 +1,543 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { DollarSign, Search, PlusCircle, Calendar, Printer, Share2, AlertTriangle, TrendingDown, TrendingUp, Users, X } from 'lucide-react';
+import { Payment, Student, User, UserRole, StudentStatus } from '@/lib/db-schema';
+import { getPayments, savePayment } from '@/lib/actions/payment.actions';
+import { getStudents, saveStudent } from '@/lib/actions/student.actions';
+import { getExpenses, saveExpense } from '@/lib/actions/expense.actions';
+import { getUsers } from '@/lib/actions/user.actions';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+export default function PagosPage() {
+  const [activeTab, setActiveTab] = useState<'INGRESOS' | 'EGRESOS'>('INGRESOS');
+  const [loading, setLoading] = useState(true);
+
+  // Data
+  const [dbPayments, setDbPayments] = useState<Payment[]>([]);
+  const [dbStudents, setDbStudents] = useState<Student[]>([]);
+  const [dbExpenses, setDbExpenses] = useState<any[]>([]);
+  const [dbUsers, setDbUsers] = useState<User[]>([]);
+
+  // Month Filter
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+
+  // States for Ingresos
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
+  const [newPayment, setNewPayment] = useState({ amount: '150000', period_covered: 'Mensualidad', payment_date: new Date().toISOString().split('T')[0] });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // States for Egresos
+  const [expenseSearch, setExpenseSearch] = useState('');
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [newExpense, setNewExpense] = useState({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Servicios', description: '', recipient_name: '', teacher_id: '' });
+
+  // Receipt
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const [currentReceiptData, setCurrentReceiptData] = useState<{payment: Payment, student: Student} | null>(null);
+
+  useEffect(() => {
+    Promise.all([getPayments(), getStudents(), getExpenses(), getUsers()]).then(([payments, students, expenses, users]) => {
+      setDbPayments(payments);
+      setDbStudents(students);
+      setDbExpenses(expenses);
+      setDbUsers(users);
+      setLoading(false);
+    });
+  }, []);
+
+  // --- METRICS ---
+  const totalIngresos = dbPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalEgresos = dbExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const balance = totalIngresos - totalEgresos;
+
+  // --- ACTIONS: INGRESOS ---
+  const handleRegisterPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentForPayment || !newPayment.amount || !newPayment.period_covered) {
+      toast.error('Complete todos los campos del pago.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const paymentData = {
+        student_id: selectedStudentForPayment.id,
+        amount: newPayment.amount,
+        period_covered: newPayment.period_covered,
+        payment_date: newPayment.payment_date
+      };
+
+      const response = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      setDbPayments([data.payment, ...dbPayments]);
+      setShowAddPaymentModal(false);
+      toast.success('¡Pago registrado exitosamente!');
+      
+      // Load receipt for printing
+      setCurrentReceiptData({ payment: data.payment, student: selectedStudentForPayment });
+
+    } catch (err: any) {
+      toast.error(err.message || 'Error de red.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePrintPOS = () => {
+    window.print();
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!currentReceiptData) return;
+    try {
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
+      
+      pdf.setFontSize(14);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("TCI - ACADEMIA", 40, 15, { align: "center" });
+      
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("Taller Creativo De Ingles", 40, 22, { align: "center" });
+      pdf.text("------------------------------------------------", 40, 28, { align: "center" });
+      
+      pdf.setFontSize(9);
+      pdf.text(`Fecha: ${currentReceiptData.payment.payment_date}`, 10, 36);
+      pdf.text(`Factura #: ${currentReceiptData.payment.id.split('_')[1]}`, 10, 42);
+      pdf.text(`Estudiante: ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}`, 10, 48);
+      pdf.text(`Documento: ${currentReceiptData.student.documento_identidad || 'N/A'}`, 10, 54);
+      
+      pdf.text("------------------------------------------------", 40, 62, { align: "center" });
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Concepto", 10, 68);
+      pdf.text("Valor", 70, 68, { align: "right" });
+      pdf.setFont("helvetica", "normal");
+      pdf.text("------------------------------------------------", 40, 74, { align: "center" });
+      
+      // Auto-wrap text for concept
+      const splitConcept = pdf.splitTextToSize(currentReceiptData.payment.period_covered, 40);
+      pdf.text(splitConcept, 10, 80);
+      pdf.text(`$${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 80, { align: "right" });
+      
+      pdf.text("------------------------------------------------", 40, 95, { align: "center" });
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`TOTAL: $${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 105, { align: "right" });
+      
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "italic");
+      pdf.text("Gracias por su pago.", 40, 120, { align: "center" });
+      pdf.text("Conserve este recibo.", 40, 125, { align: "center" });
+
+      pdf.save(`Recibo_${currentReceiptData.payment.id}.pdf`);
+      
+      const text = `Hola! Confirmamos el recibo de pago por valor de $${currentReceiptData.payment.amount} para el estudiante ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}. Puedes descargar el comprobante adjunto. Gracias por confiar en TCI.`;
+      const waLink = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(waLink, '_blank');
+      toast.success('PDF Generado exitosamente. Se ha abierto WhatsApp.');
+    } catch (error: any) {
+      console.error("PDF Error:", error);
+      toast.error('Error generando PDF: ' + (error?.message || String(error)));
+    }
+  };
+
+  const runMoraCronJob = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/cron/auto-block', { method: 'POST' });
+      const data = await response.json();
+      toast.success(data.message || 'Cron job ejecutado');
+      // Refresh students
+      const freshStudents = await getStudents();
+      setDbStudents(freshStudents);
+    } catch {
+      toast.error('Error ejecutando job de mora');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- ACTIONS: EGRESOS ---
+  const handleRegisterExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExpense.amount || !newExpense.category || !newExpense.description) {
+      toast.error('Complete los datos obligatorios del egreso');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const expId = `exp_${Date.now()}`;
+      const expenseObj = { 
+        ...newExpense, 
+        id: expId, 
+        amount: parseFloat(newExpense.amount),
+        teacher_id: newExpense.category === 'Nómina' && newExpense.teacher_id ? newExpense.teacher_id : null,
+        recipient_name: newExpense.category !== 'Nómina' && newExpense.recipient_name ? newExpense.recipient_name : null,
+      };
+      await saveExpense(expenseObj);
+      setDbExpenses([expenseObj, ...dbExpenses]);
+      setShowAddExpenseModal(false);
+      setNewExpense({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Servicios', description: '', recipient_name: '', teacher_id: '' });
+      toast.success('Egreso registrado');
+    } catch (error: any) {
+      console.error("Expense Save Error:", error);
+      toast.error('Error guardando egreso: ' + (error?.message || String(error)));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  const filteredPayments = dbPayments.filter((p) => {
+    const student = dbStudents.find(s => s.id === p.student_id);
+    const searchLower = paymentSearch.toLowerCase();
+    const matchesSearch = student?.nombres.toLowerCase().includes(searchLower) || student?.documento_identidad.includes(searchLower);
+    const matchesMonth = selectedMonth ? p.payment_date.startsWith(selectedMonth) : true;
+    return matchesSearch && matchesMonth;
+  });
+
+  const filteredExpenses = dbExpenses.filter((e) => {
+    const matchesSearch = e.description.toLowerCase().includes(expenseSearch.toLowerCase()) || e.category.toLowerCase().includes(expenseSearch.toLowerCase());
+    const matchesMonth = selectedMonth ? e.date.startsWith(selectedMonth) : true;
+    return matchesSearch && matchesMonth;
+  });
+
+  if (loading) return <div className="p-10 text-center font-bold text-slate-500">Cargando módulo financiero...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-800 font-display">Módulo Financiero</h2>
+          <p className="text-slate-500 text-sm mt-1">Control integral de recaudos, nómina y facturación.</p>
+        </div>
+        <button onClick={runMoraCronJob} disabled={isSubmitting} className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Actualizar Estados de Mora
+        </button>
+      </div>
+
+      {/* OVERVIEW CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl">
+          <div className="flex items-center gap-2 text-emerald-600 mb-2">
+            <TrendingUp className="h-5 w-5" />
+            <h3 className="font-bold uppercase tracking-wider text-[10px]">Total Ingresos</h3>
+          </div>
+          <p className="text-3xl font-extrabold text-emerald-700 font-mono">${totalIngresos.toLocaleString('es-CO')}</p>
+        </div>
+        <div className="bg-rose-50 border border-rose-100 p-5 rounded-2xl">
+          <div className="flex items-center gap-2 text-rose-600 mb-2">
+            <TrendingDown className="h-5 w-5" />
+            <h3 className="font-bold uppercase tracking-wider text-[10px]">Total Egresos</h3>
+          </div>
+          <p className="text-3xl font-extrabold text-rose-700 font-mono">${totalEgresos.toLocaleString('es-CO')}</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 p-5 rounded-2xl">
+          <div className="flex items-center gap-2 text-blue-600 mb-2">
+            <DollarSign className="h-5 w-5" />
+            <h3 className="font-bold uppercase tracking-wider text-[10px]">Balance Actual</h3>
+          </div>
+          <p className="text-3xl font-extrabold text-blue-700 font-mono">${balance.toLocaleString('es-CO')}</p>
+        </div>
+      </div>
+
+      {/* TABS & FILTERS */}
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-full max-w-sm">
+          <button onClick={() => setActiveTab('INGRESOS')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'INGRESOS' ? 'bg-[#fc7609] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
+            Ingresos (Recaudo)
+          </button>
+          <button onClick={() => setActiveTab('EGRESOS')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'EGRESOS' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
+            Egresos (Gastos)
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-500 uppercase">Filtrar por Mes:</label>
+          <input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="p-2 border border-slate-200 rounded-xl text-sm bg-white text-slate-700 font-bold focus:ring-2 focus:ring-orange-500/20" />
+          {selectedMonth && <button onClick={() => setSelectedMonth('')} className="p-2 text-slate-400 hover:text-rose-500 bg-white rounded-xl border border-slate-200"><X className="h-4 w-4" /></button>}
+        </div>
+      </div>
+
+      {activeTab === 'INGRESOS' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          
+          {/* FAST PAYMENT SECTION */}
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users className="h-5 w-5 text-[#fc7609]" /> Recaudo Rápido</h3>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input type="text" placeholder="Buscar estudiante..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm" />
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto max-h-64 border border-slate-100 rounded-xl">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 sticky top-0 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Estudiante</th>
+                    <th className="px-4 py-3">Documento</th>
+                    <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dbStudents.filter(s => s.nombres.toLowerCase().includes(paymentSearch.toLowerCase()) || s.documento_identidad.includes(paymentSearch)).map(student => (
+                    <tr key={student.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-700">{student.nombres} {student.apellidos}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{student.documento_identidad}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 text-[9px] rounded font-bold uppercase ${student.status === StudentStatus.ACTIVE ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                          {student.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => { setSelectedStudentForPayment(student); setShowAddPaymentModal(true); }} className="bg-[#fc7609] hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                          Registrar Pago
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* HISTORY TABLE */}
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-600 text-sm">Historial de Pagos Recientes</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <tr><th className="px-6 py-4">Fecha Pago</th><th className="px-6 py-4">Estudiante</th><th className="px-6 py-4">Concepto</th><th className="px-6 py-4 text-right">Valor Pagado</th><th className="px-6 py-4 text-center">Recibo</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredPayments.map((payment) => {
+                    const student = dbStudents.find(s => s.id === payment.student_id);
+                    return (
+                      <tr key={payment.id} className="hover:bg-orange-50/50">
+                        <td className="px-6 py-4 text-slate-600 font-medium"><Calendar className="h-4 w-4 inline mr-2 text-slate-400" />{payment.payment_date}</td>
+                        <td className="px-6 py-4 font-bold text-slate-800">{student ? `${student.nombres} ${student.apellidos}` : 'N/A'}</td>
+                        <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase">{payment.period_covered}</span></td>
+                        <td className="px-6 py-4 text-right font-bold text-emerald-600 font-mono">${payment.amount.toLocaleString('es-CO')}</td>
+                        <td className="px-6 py-4 text-center">
+                          {student && (
+                            <button 
+                              onClick={() => setCurrentReceiptData({ payment, student })}
+                              className="text-slate-400 hover:text-[#fc7609] p-1.5 rounded-md hover:bg-orange-50 transition-colors inline-flex items-center"
+                              title="Ver e Imprimir Recibo"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'EGRESOS' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex justify-between items-center">
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <input type="text" placeholder="Buscar gasto..." value={expenseSearch} onChange={e => setExpenseSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm" />
+            </div>
+            <button onClick={() => setShowAddExpenseModal(true)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-colors">
+              <PlusCircle className="h-5 w-5" /> Registrar Gasto/Nómina
+            </button>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users className="h-5 w-5 text-slate-800" /> Registro Rápido de Nómina</h3>
+            </div>
+            <div className="overflow-x-auto max-h-64 border border-slate-100 rounded-xl">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 sticky top-0 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Maestro / Empleado</th>
+                    <th className="px-4 py-3">Documento</th>
+                    <th className="px-4 py-3 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dbUsers.filter(u => u.role === UserRole.TEACHER || u.role === UserRole.ADMIN).map(teacher => (
+                    <tr key={teacher.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-700">{teacher.nombres} {teacher.apellidos}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{teacher.documento_identidad || 'N/A'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => { setNewExpense({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Nómina', description: 'Pago Nómina', recipient_name: '', teacher_id: teacher.id }); setShowAddExpenseModal(true); }} className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                          Pagar Nómina
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-600 text-sm">Historial de Egresos</h3>
+            </div>
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                <tr><th className="px-6 py-4">Fecha</th><th className="px-6 py-4">Categoría</th><th className="px-6 py-4">Descripción / Destinatario</th><th className="px-6 py-4 text-right">Valor Gasto</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredExpenses.map((exp) => {
+                  const teacher = dbUsers.find(u => u.id === exp.teacher_id);
+                  return (
+                    <tr key={exp.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 text-slate-600 font-medium">{exp.date}</td>
+                      <td className="px-6 py-4"><span className="bg-rose-100 text-rose-700 px-2 py-1 rounded text-[10px] font-bold uppercase">{exp.category}</span></td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-800">{exp.description}</div>
+                        <div className="text-[10px] text-slate-500">{exp.teacher_id ? `Nómina Docente: ${teacher?.nombres} ${teacher?.apellidos}` : exp.recipient_name}</div>
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-rose-600 font-mono">-${exp.amount.toLocaleString('es-CO')}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add Payment Modal */}
+      {showAddPaymentModal && selectedStudentForPayment && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-100 p-6">
+              <h3 className="font-extrabold text-lg text-slate-800 font-display">Registrar Recaudo</h3>
+              <p className="text-sm text-slate-500">Estudiante: <span className="font-bold text-[#fc7609]">{selectedStudentForPayment.nombres} {selectedStudentForPayment.apellidos}</span></p>
+            </div>
+            <form onSubmit={handleRegisterPayment} className="p-6 space-y-4">
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a pagar ($)</label><input type="number" required value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({...newPayment, period_covered: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newPayment.payment_date} onChange={e => setNewPayment({...newPayment, payment_date: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-[#fc7609] rounded-lg">Guardar Pago</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {showAddExpenseModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-100 p-6">
+              <h3 className="font-extrabold text-lg text-slate-800 font-display">Registrar Egreso/Gasto</h3>
+            </div>
+            <form onSubmit={handleRegisterExpense} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Categoría</label>
+                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value, teacher_id: ''})} className="w-full p-2 border rounded-xl bg-slate-50">
+                  <option value="Servicios">Servicios Generales</option>
+                  <option value="Materiales">Materiales Académicos</option>
+                  <option value="Nómina">Nómina a Maestros</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              {newExpense.category === 'Nómina' ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Seleccionar Maestro</label>
+                  <select required value={newExpense.teacher_id} onChange={e => setNewExpense({...newExpense, teacher_id: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50">
+                    <option value="">Seleccione...</option>
+                    {dbUsers.filter(u => u.role === UserRole.TEACHER || u.role === UserRole.ADMIN).map(t => (
+                      <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div><label className="block text-xs font-bold text-slate-500 mb-1">Destinatario / Proveedor</label><input type="text" value={newExpense.recipient_name} onChange={e => setNewExpense({...newExpense, recipient_name: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              )}
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Descripción</label><input type="text" required value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor ($)</label><input type="number" required value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <button type="button" onClick={() => setShowAddExpenseModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-slate-800 rounded-lg">Guardar Egreso</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POS RECEIPT HIDDEN (Printable area) */}
+      {currentReceiptData && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4 print:bg-white print:fixed print:inset-0 print:p-0">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative print:shadow-none print:max-w-full">
+            <button onClick={() => setCurrentReceiptData(null)} className="absolute top-2 right-2 text-slate-400 print:hidden"><X className="h-5 w-5"/></button>
+            
+            {/* POS CONTENT */}
+            <div ref={receiptRef} className="bg-white p-4 text-center font-mono text-sm text-black w-[80mm] mx-auto print:w-full print:p-0">
+              <h2 className="font-bold text-lg">TCI - ACADEMIA</h2>
+              <p className="text-xs mb-4 border-b border-dashed border-black pb-2">Taller Creativo De Inglés</p>
+              
+              <div className="text-left text-xs mb-4 space-y-1">
+                <p>Fecha: {currentReceiptData.payment.payment_date}</p>
+                <p>Factura #: {currentReceiptData.payment.id.split('_')[1]}</p>
+                <p>Estudiante: {currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}</p>
+                <p>Documento: {currentReceiptData.student.documento_identidad}</p>
+              </div>
+              
+              <table className="w-full text-xs text-left mb-4 border-b border-dashed border-black pb-2">
+                <thead><tr className="border-b border-dashed border-black"><th className="pb-1">Concepto</th><th className="text-right pb-1">Valor</th></tr></thead>
+                <tbody>
+                  <tr><td className="pt-2">{currentReceiptData.payment.period_covered}</td><td className="text-right pt-2">${currentReceiptData.payment.amount.toLocaleString('es-CO')}</td></tr>
+                </tbody>
+              </table>
+              
+              <div className="text-right font-bold text-sm mb-6">
+                TOTAL: ${currentReceiptData.payment.amount.toLocaleString('es-CO')}
+              </div>
+              
+              <p className="text-[10px] text-center italic">Gracias por su pago.<br/>Conserve este recibo.</p>
+            </div>
+
+            <div className="flex gap-2 mt-6 print:hidden">
+              <button onClick={handlePrintPOS} className="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Printer className="h-4 w-4"/> Imprimir POS</button>
+              <button onClick={handleShareWhatsApp} className="flex-1 bg-emerald-500 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Share2 className="h-4 w-4"/> WhatsApp PDF</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print\\:fixed, .print\\:fixed * { visibility: visible; }
+          .print\\:fixed { position: absolute; left: 0; top: 0; margin: 0; padding: 0; width: 100%; }
+        }
+      `}</style>
+    </div>
+  );
+}

@@ -1,12 +1,139 @@
-import React from 'react';
+"use client";
 
-export function Sidebar() {
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { BookOpen, GraduationCap, Users, DollarSign, Settings, HomeIcon, X, LogOut } from 'lucide-react';
+import { UserRole, User } from '@/lib/db-schema';
+
+interface SidebarProps {
+  currentUser: User | null;
+  mobileMenuOpen?: boolean;
+  setMobileMenuOpen?: (open: boolean) => void;
+  dbStudentsCount?: number;
+  dbCoursesCount?: number;
+  handleLogout?: () => void;
+}
+
+export function Sidebar({ 
+  currentUser, 
+  mobileMenuOpen = false, 
+  setMobileMenuOpen,
+  dbStudentsCount = 0,
+  dbCoursesCount = 0,
+  handleLogout
+}: SidebarProps) {
+  const pathname = usePathname();
+
+  const isTeacher = currentUser?.role === UserRole.TEACHER;
+  const isAdmin = currentUser?.role === UserRole.ADMIN;
+
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 hidden lg:block shrink-0">
-      <div className="p-4">
-        {/* Sidebar content to be migrated here */}
-        <h2>Sidebar</h2>
+    <aside className={`w-64 bg-white border-r border-slate-100 shrink-0 md:block ${mobileMenuOpen ? 'block fixed inset-y-0 left-0 z-50 shadow-xl' : 'hidden'}`} id="dashboard_sidebar_nav">
+      <div className="p-4 flex justify-between items-center md:hidden border-b border-slate-150">
+        <span className="font-bold text-[#fc7609] font-display">TCI Nav</span>
+        {setMobileMenuOpen && (
+          <button onClick={() => setMobileMenuOpen(false)} className="text-slate-500">
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
+
+      <nav className="p-4 space-y-1.5 h-full flex flex-col justify-between" id="sidebar_links_navigation">
+        <div className="space-y-1">
+          {isTeacher ? (
+            <Link
+              href="/dashboard/cursos"
+              className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                ${pathname.includes('/cursos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <BookOpen className="h-4 w-4 shrink-0" />
+              <span>Mis Grupos</span>
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/dashboard"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  ${pathname === '/dashboard' ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <HomeIcon className="h-4 w-4 shrink-0" />
+                <span>Inicio</span>
+              </Link>
+
+              <Link
+                href="/dashboard/estudiantes"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  ${pathname.includes('/estudiantes') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <GraduationCap className="h-4 w-4 shrink-0" />
+                <span>Estudiantes (Core)</span>
+              </Link>
+
+              {isAdmin && (
+                <Link
+                  href="/dashboard/maestros"
+                  className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                    ${pathname.includes('/maestros') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                >
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>Maestros (Usuarios)</span>
+                </Link>
+              )}
+
+              <Link
+                href="/dashboard/cursos"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  ${pathname.includes('/cursos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span>Cursos / Grupos</span>
+              </Link>
+
+              <Link
+                href="/dashboard/asistencia"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  ${pathname.includes('/asistencia') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Users className="h-4 w-4 shrink-0" />
+                <span>Reportes Asistencia</span>
+              </Link>
+
+              <Link
+                href="/dashboard/pagos"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  ${pathname.includes('/pagos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <DollarSign className="h-4 w-4 shrink-0" />
+                <span>Módulo Financiero</span>
+              </Link>
+
+              <Link
+                href="/dashboard/configuracion"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  ${pathname.includes('/configuracion') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Settings className="h-4 w-4 shrink-0" />
+                <span>Configuración</span>
+              </Link>
+            </>
+          )}
+        </div>
+
+        <div className="pt-4 border-t border-slate-100 space-y-2 mt-auto" id="sidebar_status_metrix">
+          <span className="text-[9px] font-mono font-bold text-slate-400 block tracking-widest uppercase">Estatus Base de Datos</span>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <div className="bg-slate-50 p-2 rounded-lg">
+              <span className="text-slate-400 block">Estudiantes</span>
+              <span className="font-bold text-slate-800">{dbStudentsCount}</span>
+            </div>
+            <div className="bg-slate-50 p-2 rounded-lg">
+              <span className="text-slate-400 block">Cursos Activos</span>
+              <span className="font-bold text-slate-800">{dbCoursesCount}</span>
+            </div>
+          </div>
+        </div>
+      </nav>
     </aside>
   );
 }
