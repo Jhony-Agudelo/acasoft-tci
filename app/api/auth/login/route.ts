@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { User, UserStatus, INITIAL_USERS } from '@/lib/db-schema';
 import { validateUserStatus } from '@/lib/auth-middleware';
-import { isPgConfigured, dbGetUsers } from '@/lib/pg-db';
+import { getUsers } from '@/lib/actions/user.actions';
 import { signJwt } from '@/lib/jwt';
 
 export async function POST(req: NextRequest) {
@@ -18,20 +18,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Attempt to read users from PostgreSQL if configured
     let usersList: User[] = [];
-    if (isPgConfigured()) {
-      try {
-        usersList = await dbGetUsers();
-      } catch (dbErr: any) {
-        console.error('Failed to query users from PostgreSQL, falling back:', dbErr);
-        usersList = clientUsers && clientUsers.length > 0 ? clientUsers : INITIAL_USERS;
-      }
-    } else {
-      // Use users from custom client-state sync if provided, otherwise fallback to standard list
-      // This allows visual adjustments the user makes in the browser to instantly reflect in server controllers!
+    try {
+      usersList = await getUsers();
+    } catch (dbErr: any) {
+      console.error('Failed to query users from Prisma, falling back:', dbErr);
       usersList = clientUsers && clientUsers.length > 0 ? clientUsers : INITIAL_USERS;
     }
+
     
     let user = usersList.find(
       (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim()

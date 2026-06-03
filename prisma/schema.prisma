@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model attendance {
+  id         String   @id @db.VarChar(100)
+  student_id String   @db.VarChar(100)
+  course_id  String   @db.VarChar(100)
+  date       String   @db.VarChar(50)
+  status     String   @db.VarChar(50)
+  courses    courses  @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  students   students @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model courses {
+  id           String       @id @db.VarChar(100)
+  nombre_curso String       @db.VarChar(255)
+  teacher_id   String       @db.VarChar(100)
+  status       String       @db.VarChar(50)
+  schedule     Json?
+  attendance   attendance[]
+  users        users        @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  students     students[]
+}
+
+model guardians {
+  id              String     @id @db.VarChar(100)
+  nombre_completo String     @db.VarChar(255)
+  direccion       String
+  telefono        String     @db.VarChar(100)
+  parentesco      String     @db.VarChar(100)
+  students        students[]
+}
+
+model payments {
+  id             String   @id @db.VarChar(100)
+  student_id     String   @db.VarChar(100)
+  amount         Float
+  payment_date   String   @db.VarChar(50)
+  period_covered String   @db.VarChar(100)
+  students       students @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model students {
+  id                    String       @id @db.VarChar(100)
+  documento_identidad   String       @unique @db.VarChar(100)
+  nombres               String       @db.VarChar(255)
+  apellidos             String       @db.VarChar(255)
+  fecha_nacimiento      String?      @db.VarChar(50)
+  edad                  Int
+  colegio_origen        String       @db.VarChar(255)
+  grado_escolar         String?      @db.VarChar(100)
+  curso_actual          String       @db.VarChar(255)
+  jornada_escolar       String       @db.VarChar(50)
+  guardian_id           String       @db.VarChar(100)
+  status                String       @db.VarChar(50)
+  payment_deadline_date String       @db.VarChar(50)
+  course_id             String?      @db.VarChar(100)
+  attendance            attendance[]
+  payments              payments[]
+  courses               courses?     @relation(fields: [course_id], references: [id], onUpdate: NoAction)
+  guardians             guardians    @relation(fields: [guardian_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model system_settings {
+  id               String  @id @db.VarChar(100)
+  enrollment_open  Boolean
+  academic_year    String  @db.VarChar(50)
+  institution_name String  @db.VarChar(255)
+}
+
+model users {
+  id                  String    @id @db.VarChar(100)
+  email               String    @unique @db.VarChar(255)
+  password_hash       String    @db.VarChar(255)
+  role                String    @db.VarChar(50)
+  status              String    @db.VarChar(50)
+  nombres             String    @db.VarChar(255)
+  apellidos           String    @db.VarChar(255)
+  telefono            String?   @db.VarChar(100)
+  documento_identidad String?   @db.VarChar(100)
+  fecha_nacimiento    String?   @db.VarChar(50)
+  direccion           String?
+  contacto_emergencia String?   @db.VarChar(100)
+  parentesco_contacto String?   @db.VarChar(100)
+  courses             courses[]
+}

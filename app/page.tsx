@@ -4,22 +4,30 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import logoApp from '../assets/img/logoApp.png';
-import {
-  User,
-  Guardian,
-  Student,
-  Course,
-  SystemSettings,
+import { 
+  User, 
+  Guardian, 
+  Student, 
+  Course, 
+  SystemSettings, 
+  Attendance, 
+  Payment,
   UserRole,
   UserStatus,
   StudentStatus,
   SchoolDayPeriod,
+  CourseScheduleItem,
   COLEGIOS_LA_VIRGINIA,
-  Attendance,
   AttendanceStatus,
-  Payment,
+  INITIAL_SETTINGS
 } from '@/lib/db-schema';
-import { LocalDbStore } from '@/lib/db-store';
+import { getUsers, saveUser } from '@/lib/actions/user.actions';
+import { getStudents, saveStudent } from '@/lib/actions/student.actions';
+import { getGuardians, saveGuardian } from '@/lib/actions/guardian.actions';
+import { getCourses, saveCourse } from '@/lib/actions/course.actions';
+import { getSettings, saveSettings } from '@/lib/actions/settings.actions';
+import { getAttendances, saveAttendances } from '@/lib/actions/attendance.actions';
+import { getPayments, savePayment } from '@/lib/actions/payment.actions';
 import { simulateMiddlewareCheck, validateUserStatus } from '@/lib/auth-middleware';
 import {
   GraduationCap,
@@ -60,13 +68,23 @@ import {
 
 export default function Home() {
   // --- DATABASE STATE ---
-  const [dbUsers, setDbUsers] = useState<User[]>(() => LocalDbStore.getUsers());
-  const [dbGuardians, setDbGuardians] = useState<Guardian[]>(() => LocalDbStore.getGuardians());
-  const [dbStudents, setDbStudents] = useState<Student[]>(() => LocalDbStore.getStudents());
-  const [dbCourses, setDbCourses] = useState<Course[]>(() => LocalDbStore.getCourses());
-  const [dbSettings, setDbSettings] = useState<SystemSettings | null>(() => LocalDbStore.getSettings());
-  const [dbAttendances, setDbAttendances] = useState<Attendance[]>(() => LocalDbStore.getAttendances());
-  const [dbPayments, setDbPayments] = useState<Payment[]>(() => LocalDbStore.getPayments());
+  const [dbUsers, setDbUsers] = useState<User[]>([]);
+  const [dbGuardians, setDbGuardians] = useState<Guardian[]>([]);
+  const [dbStudents, setDbStudents] = useState<Student[]>([]);
+  const [dbCourses, setDbCourses] = useState<Course[]>([]);
+  const [dbSettings, setDbSettings] = useState<SystemSettings | null>(null);
+  const [dbAttendances, setDbAttendances] = useState<Attendance[]>([]);
+  const [dbPayments, setDbPayments] = useState<Payment[]>([]);
+
+  useEffect(() => {
+    getUsers().then(setDbUsers);
+    getGuardians().then(setDbGuardians);
+    getStudents().then(setDbStudents);
+    getCourses().then(setDbCourses);
+    getSettings().then(setDbSettings);
+    getAttendances().then(setDbAttendances);
+    getPayments().then(setDbPayments);
+  }, []);
 
   // --- UI STATES ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -175,7 +193,8 @@ export default function Home() {
     guardian_parentesco: 'Madre',
   });
 
-  const [editedSettings, setEditedSettings] = useState<SystemSettings>(() => LocalDbStore.getSettings());
+  const [editedSettings, setEditedSettings] = useState<SystemSettings>(dbSettings || INITIAL_SETTINGS);
+  useEffect(() => { if (dbSettings) setEditedSettings(dbSettings); }, [dbSettings]);
 
   // --- PUBLIC ENROLLMENT STATES ---
   const [unauthView, setUnauthView] = useState<'login' | 'public_enrollment'>('public_enrollment');
@@ -214,14 +233,14 @@ export default function Home() {
   };
 
   // Load database from Local Storage
-  const loadDatabase = () => {
-    const users = LocalDbStore.getUsers();
-    const guardians = LocalDbStore.getGuardians();
-    const students = LocalDbStore.getStudents();
-    const courses = LocalDbStore.getCourses();
-    const settings = LocalDbStore.getSettings();
-    const attendances = LocalDbStore.getAttendances();
-    const payments = LocalDbStore.getPayments();
+  const loadDatabase = async () => {
+    const users = await getUsers();
+    const guardians = await getGuardians();
+    const students = await getStudents();
+    const courses = await getCourses();
+    const settings = await getSettings();
+    const attendances = await getAttendances();
+    const payments = await getPayments();
 
     setDbUsers(users);
     setDbGuardians(guardians);
@@ -272,13 +291,13 @@ export default function Home() {
             setDbPayments(payments);
 
             // Also synchronize client localStorage so LocalDbStore stays updated!
-            LocalDbStore.set('users', users);
-            LocalDbStore.set('guardians', guardians);
-            LocalDbStore.set('students', students);
-            LocalDbStore.set('courses', courses);
-            LocalDbStore.set('settings', settings);
-            LocalDbStore.set('attendances', attendances);
-            LocalDbStore.set('payments', payments);
+            // Synced directly with Prisma via actions
+            // Synced directly with Prisma via actions
+            // Synced directly with Prisma via actions
+            // Synced directly with Prisma via actions
+            // Synced directly with Prisma via actions
+            // Synced directly with Prisma via actions
+            // Synced directly with Prisma via actions
 
             addLog('Database Sync', 'SUCCESS', 'Conectado a PostgreSQL y sincronizado en tiempo real. ¡Felicitaciones!');
           } else {
@@ -425,7 +444,7 @@ export default function Home() {
 
       const updatedUsers = [...dbUsers, data.teacher];
       setDbUsers(updatedUsers);
-      LocalDbStore.saveUsers(updatedUsers);
+      Promise.all(updatedUsers.map(saveUser))
       setShowAddTeacherModal(false);
 
       // Reset form
@@ -435,6 +454,11 @@ export default function Home() {
         email: '',
         password: 'teacher123',
         telefono: '',
+        documento_identidad: '',
+        fecha_nacimiento: '',
+        direccion: '',
+        contacto_emergencia: '',
+        parentesco_contacto: '',
       });
 
       addLog('Teacher DB Write', 'SUCCESS', `Maestro/a ${data.teacher.nombres} ${data.teacher.apellidos} registrado exitosamente y sincronizado en el estado local.`);
@@ -494,7 +518,7 @@ export default function Home() {
 
       const updatedCourses = [...dbCourses, data.course];
       setDbCourses(updatedCourses);
-      LocalDbStore.saveCourses(updatedCourses);
+      Promise.all(updatedCourses.map(saveCourse))
       setShowAddCourseModal(false);
 
       // Reset Course form and schedule
@@ -557,7 +581,7 @@ export default function Home() {
 
       const updatedCourses = dbCourses.map((c) => c.id === data.course.id ? data.course : c);
       setDbCourses(updatedCourses);
-      LocalDbStore.saveCourses(updatedCourses);
+      Promise.all(updatedCourses.map(saveCourse))
       setIsEditingCourse(false);
 
       addLog('Course DB Update', 'SUCCESS', `Curso relacional [${data.course.nombre_curso}] actualizado con éxito.`);
@@ -595,7 +619,7 @@ export default function Home() {
 
       const updatedStudents = dbStudents.map((s) => s.id === data.student.id ? data.student : s);
       setDbStudents(updatedStudents);
-      LocalDbStore.saveStudents(updatedStudents);
+      Promise.all(updatedStudents.map(saveStudent))
       addLog('Student Course Direct Bind', 'SUCCESS', `Estudiante ${student.nombres} fue ${shouldAssign ? 'vinculado al' : 'desvinculado del'} curso.`);
     } catch {
       alert('Error de conexión al cambiar la asignación del estudiante.');
@@ -666,8 +690,8 @@ export default function Home() {
       setDbStudents(updatedStudents);
       setDbGuardians(updatedGuardians);
 
-      LocalDbStore.saveStudents(updatedStudents);
-      LocalDbStore.saveGuardians(updatedGuardians);
+      Promise.all(updatedStudents.map(saveStudent))
+      Promise.all(updatedGuardians.map(saveGuardian))
 
       setShowAddStudentForm(false);
       setEditingStudentId(null);
@@ -810,8 +834,8 @@ export default function Home() {
       setDbGuardians(updatedGuardians);
       setDbStudents(updatedStudents);
 
-      LocalDbStore.saveGuardians(updatedGuardians);
-      LocalDbStore.saveStudents(updatedStudents);
+      Promise.all(updatedGuardians.map(saveGuardian))
+      Promise.all(updatedStudents.map(saveStudent))
 
       addLog('Public Enrollment Success', 'SUCCESS', `Estudiante ${student.nombres} ${student.apellidos} inscrito públicamente (Pre-estado REGISTERED).`);
 
@@ -885,7 +909,7 @@ export default function Home() {
       const updatedAttendances = [...existingFiltered, ...newAttendances];
 
       setDbAttendances(updatedAttendances);
-      LocalDbStore.saveAttendances(updatedAttendances);
+      saveAttendances(updatedAttendances)
 
       addLog(
         'Attendance Registered',
@@ -924,7 +948,7 @@ export default function Home() {
     });
 
     setDbUsers(updatedUsers);
-    LocalDbStore.saveUsers(updatedUsers);
+    Promise.all(updatedUsers.map(saveUser))
   };
 
   // --- UPDATE SYSTEM SETTINGS ---
@@ -986,13 +1010,13 @@ export default function Home() {
           }
           addLog('Seed Reset', 'SUCCESS', 'Base de datos PostgreSQL restablecida a semilla de fábrica con éxito.');
         } else {
-          LocalDbStore.resetDb();
+          // Reset DB no longer applicable locally
           loadDatabase();
           addLog('Seed Reset', 'SUCCESS', 'Base de datos local de TCI restablecida a semilla de fábrica.');
         }
       } catch (err) {
         console.error('Error resetting database:', err);
-        LocalDbStore.resetDb();
+        // Reset DB no longer applicable locally
         loadDatabase();
         addLog('Seed Reset', 'SUCCESS', 'Base de datos local restablecida a semilla de fábrica.');
       }
@@ -1038,8 +1062,8 @@ export default function Home() {
         const newPayments = [data.payment, ...dbPayments];
 
         // Save safely in LocalDbStore
-        LocalDbStore.saveStudents(updatedStudents);
-        LocalDbStore.savePayments(newPayments);
+        Promise.all(updatedStudents.map(saveStudent))
+        Promise.all(newPayments.map(savePayment))
 
         // Update active React state
         setDbStudents(updatedStudents);
@@ -1083,7 +1107,7 @@ export default function Home() {
 
       if (data.success) {
         // Sync modified students in local storage database
-        LocalDbStore.saveStudents(data.updatedStudents);
+        Promise.all(data.updatedStudents.map(saveStudent))
         setDbStudents(data.updatedStudents);
 
         addLog('CronJob Completion success', 'SUCCESS', data.message);
@@ -4179,34 +4203,32 @@ CREATE TABLE students (
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
-                                      Edad (Años)*
-                                    </label>
-                                    <input
-                                      type="number"
-                                      required
-                                      min={4}
-                                      max={18}
-                                      value={publicEnrollmentForm.edad}
-                                      onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, edad: parseInt(e.target.value) || 8 }))}
-                                      className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50 font-mono"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
-                                      Jornada Escolar
-                                    </label>
-                                    <select
-                                      value={publicEnrollmentForm.jornada_escolar}
-                                      onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, jornada_escolar: e.target.value as SchoolDayPeriod }))}
-                                      className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
-                                    >
-                                      <option value={SchoolDayPeriod.MANANA}>Mañana</option>
-                                      <option value={SchoolDayPeriod.TARDE}>Tarde</option>
-                                    </select>
-                                  </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
+                                    Edad (Años)*
+                                  </label>
+                                  <input
+                                    type="number"
+                                    required
+                                    min={4}
+                                    max={18}
+                                    value={publicEnrollmentForm.edad}
+                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, edad: parseInt(e.target.value) || 8 }))}
+                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50 font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">
+                                    Jornada Escolar
+                                  </label>
+                                  <select
+                                    value={publicEnrollmentForm.jornada_escolar}
+                                    onChange={(e) => setPublicEnrollmentForm(prev => ({ ...prev, jornada_escolar: e.target.value as SchoolDayPeriod }))}
+                                    className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc7609] bg-slate-50/50"
+                                  >
+                                    <option value={SchoolDayPeriod.MANANA}>Mañana</option>
+                                    <option value={SchoolDayPeriod.TARDE}>Tarde</option>
+                                  </select>
                                 </div>
                               </div>
 
@@ -4469,49 +4491,6 @@ CREATE TABLE students (
                           )}
                         </button>
                       </form>
-
-                      {/* QUICK LOGINS DEMO CREDS */}
-                      <div className="mt-6 pt-5 border-t border-slate-100 space-y-2">
-                        <span className="block text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">
-                          ⚡ CUENTAS DEMO DE ACCESO
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => handleFastLogin(UserRole.TEACHER, 'teacher.ana@translinguakids.com')}
-                          className="w-full p-2 bg-purple-50/35 hover:bg-purple-50 rounded-lg text-[11px] text-slate-700 flex justify-between font-bold text-left transition-colors border border-purple-100/50 cursor-pointer"
-                        >
-                          <span>Docente (Ana Restrepo)</span>
-                          <span className="font-mono text-[10px] text-purple-600 font-bold">teacher123</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleFastLogin(UserRole.DIRECTOR, 'director@translinguakids.com')}
-                          className="w-full p-2 bg-orange-50/35 hover:bg-orange-50 rounded-lg text-[11px] text-slate-700 flex justify-between font-bold text-left transition-colors border border-orange-100/50 cursor-pointer"
-                        >
-                          <span>Director (Daniel Rivera)</span>
-                          <span className="font-mono text-[10px] text-orange-600 font-bold">director123</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleFastLogin(UserRole.ADMIN, 'admin@translinguakids.com')}
-                          className="w-full p-2 bg-blue-50/35 hover:bg-blue-50 rounded-lg text-[11px] text-slate-700 flex justify-between font-bold text-left transition-colors border border-blue-100/50 cursor-pointer"
-                        >
-                          <span>Administrador (Carlos Vélez)</span>
-                          <span className="font-mono text-[10px] text-blue-600 font-bold">admin123</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleUserStatus('usr_inactivo')}
-                          className="w-full p-2 bg-rose-50/35 hover:bg-rose-50 rounded-lg text-[11px] text-red-750 flex justify-between font-bold text-left transition-colors border border-red-100/50 cursor-pointer"
-                        >
-                          <span>Probar Cuenta Inactiva (Fallo)</span>
-                          <span className="font-mono text-[10px] text-red-500 font-bold">inactivo123</span>
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -4941,13 +4920,41 @@ CREATE TABLE students (
       })()}
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-100 py-6 px-4 text-center text-xs text-slate-400" id="footer_section">
-        <p className="font-display font-medium">
-          © 2026 TCI - Taller Creativo De Inglés — La Virginia, Risaralda
-        </p>
-        <p className="mt-1 text-[10px] font-medium text-slate-400">
-          Desarrollado en Colombia • MVP Fase 2: CRUD de Estudiantes, Maestros, Cursos y Layout de Directivos (Relaciones Integradas)
-        </p>
+      <footer className="bg-white border-t border-slate-100 relative overflow-hidden" id="footer_section">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-orange-300 to-transparent opacity-50"></div>
+        <div className="max-w-5xl mx-auto py-10 px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#fc7609] to-orange-400 flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
+                  <span className="font-display font-bold text-xs tracking-wider">TCI</span>
+                </div>
+                <h3 className="font-display font-bold text-slate-800 text-sm">Taller Creativo De Inglés</h3>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">
+                © 2026 TCI — La Virginia, Risaralda
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center md:items-end gap-3">
+              <div className="flex gap-4">
+                <a href="#" className="text-slate-400 hover:text-[#fc7609] transition-colors p-2 bg-slate-50 hover:bg-orange-50 rounded-full border border-slate-100 hover:border-orange-100">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                  </svg>
+                </a>
+                <a href="#" className="text-slate-400 hover:text-[#fc7609] transition-colors p-2 bg-slate-50 hover:bg-orange-50 rounded-full border border-slate-100 hover:border-orange-100">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd" />
+                  </svg>
+                </a>
+              </div>
+              <p className="mt-1 text-[10px] font-mono text-slate-400">
+                Todos los derechos reservados - 2026 CYA - Lab
+              </p>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );
