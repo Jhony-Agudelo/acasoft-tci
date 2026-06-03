@@ -20,8 +20,8 @@ export function Navbar({ currentUser, handleLogout, setMobileMenuOpen }: NavbarP
     <header className="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-4 lg:px-8 z-30 sticky top-0 shadow-sm">
       <div className="flex items-center gap-4">
         {setMobileMenuOpen && (
-          <button 
-            onClick={() => setMobileMenuOpen(true)} 
+          <button
+            onClick={() => setMobileMenuOpen(true)}
             className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg md:hidden"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,7 +29,7 @@ export function Navbar({ currentUser, handleLogout, setMobileMenuOpen }: NavbarP
             </svg>
           </button>
         )}
-        <span className="font-bold text-[#fc7609] font-display text-lg hidden md:block">TCI Dashboard</span>
+        <span className="font-bold text-[#fc7609] font-display text-lg hidden md:block">TCI - Taller Creativo de Inglés</span>
       </div>
 
       <div className="flex items-center gap-4">
@@ -37,15 +37,15 @@ export function Navbar({ currentUser, handleLogout, setMobileMenuOpen }: NavbarP
           <p className="text-sm font-bold text-slate-800">{currentUser.nombres} {currentUser.apellidos}</p>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{currentUser.role}</p>
         </div>
-        
+
         <div className="w-10 h-10 rounded-full border-2 border-orange-100 flex items-center justify-center bg-orange-50 text-[#fc7609] font-bold overflow-hidden shadow-sm">
           {currentUser.avatar_url ? (
-            <Image 
-              src={currentUser.avatar_url} 
-              alt="Avatar" 
-              width={40} 
-              height={40} 
-              className="w-full h-full object-cover" 
+            <Image
+              src={currentUser.avatar_url}
+              alt="Avatar"
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
             />
           ) : (
             <span>{getInitials()}</span>

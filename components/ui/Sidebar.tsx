@@ -2,9 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { BookOpen, GraduationCap, Users, DollarSign, Settings, HomeIcon, X, LogOut } from 'lucide-react';
 import { UserRole, User } from '@/lib/db-schema';
+import logoApp from '@/assets/img/logoApp.png';
+import { link } from 'fs';
 
 interface SidebarProps {
   currentUser: User | null;
@@ -15,9 +18,9 @@ interface SidebarProps {
   handleLogout?: () => void;
 }
 
-export function Sidebar({ 
-  currentUser, 
-  mobileMenuOpen = false, 
+export function Sidebar({
+  currentUser,
+  mobileMenuOpen = false,
   setMobileMenuOpen,
   dbStudentsCount = 0,
   dbCoursesCount = 0,
@@ -30,10 +33,10 @@ export function Sidebar({
 
   return (
     <aside className={`w-64 bg-white border-r border-slate-100 shrink-0 md:block ${mobileMenuOpen ? 'block fixed inset-y-0 left-0 z-50 shadow-xl' : 'hidden'}`} id="dashboard_sidebar_nav">
-      <div className="p-4 flex justify-between items-center md:hidden border-b border-slate-150">
-        <span className="font-bold text-[#fc7609] font-display">TCI Nav</span>
+      <div className="p-4 relative flex justify-center items-center border-b border-slate-100 min-h-[80px]">
+        <Image src={logoApp} alt="TCI Logo" width={50} height={50} className="object-contain" priority />
         {setMobileMenuOpen && (
-          <button onClick={() => setMobileMenuOpen(false)} className="text-slate-500">
+          <button onClick={() => setMobileMenuOpen(false)} className="absolute right-4 text-slate-500 md:hidden">
             <X className="h-5 w-5" />
           </button>
         )}
@@ -41,10 +44,18 @@ export function Sidebar({
 
       <nav className="p-4 space-y-1.5 h-full flex flex-col justify-between" id="sidebar_links_navigation">
         <div className="space-y-1">
+          <Link
+            href="/dashboard"
+            className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
+              ${pathname === '/dashboard' ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <HomeIcon className="h-4 w-4 shrink-0" />
+            <span>Inicio</span>
+          </Link>
           {isTeacher ? (
             <Link
               href="/dashboard/cursos"
-              className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+              className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                 ${pathname.includes('/cursos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               <BookOpen className="h-4 w-4 shrink-0" />
@@ -53,17 +64,8 @@ export function Sidebar({
           ) : (
             <>
               <Link
-                href="/dashboard"
-                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
-                  ${pathname === '/dashboard' ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <HomeIcon className="h-4 w-4 shrink-0" />
-                <span>Inicio</span>
-              </Link>
-
-              <Link
                 href="/dashboard/estudiantes"
-                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/estudiantes') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <GraduationCap className="h-4 w-4 shrink-0" />
@@ -73,7 +75,7 @@ export function Sidebar({
               {isAdmin && (
                 <Link
                   href="/dashboard/maestros"
-                  className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                  className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                     ${pathname.includes('/maestros') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                 >
                   <Users className="h-4 w-4 shrink-0" />
@@ -83,16 +85,25 @@ export function Sidebar({
 
               <Link
                 href="/dashboard/cursos"
-                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/cursos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
-                <span>Cursos / Grupos</span>
+                <span>Gestión de Cursos</span>
+              </Link>
+
+              <Link
+                href="/dashboard/planeaciones"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
+                  ${pathname.includes('/planeaciones') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <BookOpen className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span>Planeaciones</span>
               </Link>
 
               <Link
                 href="/dashboard/asistencia"
-                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/asistencia') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <Users className="h-4 w-4 shrink-0" />
@@ -101,7 +112,7 @@ export function Sidebar({
 
               <Link
                 href="/dashboard/pagos"
-                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/pagos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <DollarSign className="h-4 w-4 shrink-0" />
@@ -110,7 +121,7 @@ export function Sidebar({
 
               <Link
                 href="/dashboard/configuracion"
-                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-display transition-all text-left
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/configuracion') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <Settings className="h-4 w-4 shrink-0" />

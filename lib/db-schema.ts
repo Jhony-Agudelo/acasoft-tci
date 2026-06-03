@@ -66,12 +66,14 @@ export interface CourseScheduleItem {
   day: string;
   start_time: string;
   end_time: string;
+  main_teacher_id: string; // Reference to User
+  support_teacher_1_id?: string; // Optional reference
+  support_teacher_2_id?: string; // Optional reference
 }
 
 export interface Course {
   id: string; // e.g. "crs_1"
   nombre_curso: string;
-  teacher_id: string; // Reference to User (TEACHER)
   status: 'ACTIVE' | 'INACTIVE';
   schedule?: CourseScheduleItem[];
 }
@@ -98,11 +100,28 @@ export interface Attendance {
 }
 
 export interface Payment {
-  id: string;
-  student_id: string; // Foreign Key to Student
+  id: string; // e.g. "pay_1"
+  student_id: string; // Reference to Student
   amount: number;
   payment_date: string; // YYYY-MM-DD
-  period_covered: string; // Ej. "Junio 2026"
+  period_covered: string; // e.g., "Junio 2024"
+}
+
+export interface LessonPlanResource {
+  title: string;
+  url: string;
+  type: 'video' | 'document' | 'activity' | 'other';
+}
+
+export interface LessonPlan {
+  id: string;
+  course_id?: string;
+  week_start?: string;
+  week_end?: string;
+  topic: string;
+  description: string;
+  resources?: LessonPlanResource[];
+  level?: string; // "Basico", "Intermedio", "Avanzado"
 }
 
 // Predefined schools in La Virginia, Risaralda, Colombia

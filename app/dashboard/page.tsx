@@ -23,7 +23,22 @@ export default function DashboardHome() {
       if (authData.success && authData.user) {
         setCurrentUser(authData.user);
         if (authData.user.role === 'TEACHER') {
-          setTeacherCourses(courses.filter(c => c.teacher_id === authData.user.id));
+          setTeacherCourses(courses.filter(c => 
+            c.schedule?.some(s => 
+              s.main_teacher_id === authData.user.id || 
+              s.support_teacher_1_id === authData.user.id || 
+              s.support_teacher_2_id === authData.user.id
+            )
+          ));
+        } else {
+          // If Director/Admin, they could also be teachers in a schedule!
+          setTeacherCourses(courses.filter(c => 
+            c.schedule?.some(s => 
+              s.main_teacher_id === authData.user.id || 
+              s.support_teacher_1_id === authData.user.id || 
+              s.support_teacher_2_id === authData.user.id
+            )
+          ));
         }
       }
       setStats({
@@ -44,10 +59,11 @@ export default function DashboardHome() {
   const todayCapitalized = todayName.charAt(0).toUpperCase() + todayName.slice(1);
   let todayClasses: Array<{courseName: string, start: string, end: string}> = [];
   
-  if (isTeacher) {
-    teacherCourses.forEach(c => {
-      c.schedule?.forEach(s => {
-        // Simple day matching
+  // All users can have today classes if they are in the schedule
+  teacherCourses.forEach(c => {
+    c.schedule?.forEach(s => {
+      // Check if this specific user is assigned to THIS specific block
+      if (s.main_teacher_id === currentUser?.id || s.support_teacher_1_id === currentUser?.id || s.support_teacher_2_id === currentUser?.id) {
         if (s.day.toLowerCase() === todayCapitalized.toLowerCase() || 
             (s.day === 'Miercoles' && todayCapitalized === 'Miércoles') ||
             (s.day === 'Miércoles' && todayCapitalized === 'Miercoles') ||
@@ -55,11 +71,11 @@ export default function DashboardHome() {
             (s.day === 'Sábado' && todayCapitalized === 'Sabado')) {
           todayClasses.push({ courseName: c.nombre_curso, start: s.start_time, end: s.end_time });
         }
-      });
+      }
     });
-    // Sort by start time
-    todayClasses.sort((a, b) => a.start.localeCompare(b.start));
-  }
+  });
+  // Sort by start time
+  todayClasses.sort((a, b) => a.start.localeCompare(b.start));
 
   if (loading) return <div className="p-10 font-bold text-slate-500 text-center">Cargando inicio...</div>;
 
@@ -75,7 +91,7 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {!isTeacher ? (
+      {!isTeacher && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
@@ -109,25 +125,32 @@ export default function DashboardHome() {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden p-6">
+      )}
+
+      {(!isTeacher || todayClasses.length > 0) && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden p-6 mt-6">
           <h3 className="font-extrabold text-lg text-slate-800 font-display mb-4 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-[#fc7609]" /> Clases de Hoy ({todayCapitalized})
+            <Calendar className="h-5 w-5 text-[#fc7609]" /> Tus Clases de Hoy ({todayCapitalized})
           </h3>
           
           {todayClasses.length > 0 ? (
             <div className="space-y-4">
               {todayClasses.map((cls, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <a 
+                  key={idx} 
+                  href={`/dashboard/cursos?search=${encodeURIComponent(cls.courseName)}`}
+                  className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:border-[#fc7609]/30 hover:shadow-md transition-all group block cursor-pointer"
+                >
                   <div className="flex items-center gap-4">
-                    <div className="bg-orange-100 text-orange-600 font-bold px-4 py-2 rounded-xl text-sm">
+                    <div className="bg-orange-100 text-orange-600 font-bold px-4 py-2 rounded-xl text-sm group-hover:bg-[#fc7609] group-hover:text-white transition-colors">
                       {cls.start} - {cls.end}
                     </div>
                     <div>
-                      <p className="font-bold text-slate-800">{cls.courseName}</p>
+                      <p className="font-bold text-slate-800 group-hover:text-[#fc7609] transition-colors">{cls.courseName}</p>
+                      <p className="text-xs font-medium text-slate-400 group-hover:text-slate-500 transition-colors mt-0.5">Clic para ver detalles</p>
                     </div>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           ) : (

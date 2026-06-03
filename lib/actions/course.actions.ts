@@ -7,7 +7,6 @@ function mapCourse(prismaCourse: any): Course {
   return {
     id: prismaCourse.id,
     nombre_curso: prismaCourse.nombre_curso,
-    teacher_id: prismaCourse.teacher_id,
     status: prismaCourse.status as 'ACTIVE' | 'INACTIVE',
     schedule: typeof prismaCourse.schedule === 'string' ? JSON.parse(prismaCourse.schedule) : (prismaCourse.schedule || []),
   };
@@ -31,16 +30,14 @@ export async function saveCourse(course: Course): Promise<boolean> {
       where: { id: course.id },
       update: {
         nombre_curso: course.nombre_curso,
-        teacher_id: course.teacher_id,
         status: course.status,
-        schedule: course.schedule ? JSON.stringify(course.schedule) : '[]',
+        schedule: course.schedule ? (course.schedule as any) : [],
       },
       create: {
         id: course.id,
         nombre_curso: course.nombre_curso,
-        teacher_id: course.teacher_id,
         status: course.status,
-        schedule: course.schedule ? JSON.stringify(course.schedule) : '[]',
+        schedule: course.schedule ? (course.schedule as any) : [],
       },
     });
     return true;

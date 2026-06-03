@@ -23,13 +23,18 @@ export default function CursosPage() {
 
   const [newCourseForm, setNewCourseForm] = useState({
     nombre_curso: '',
-    teacher_id: '',
   });
-  const [newCourseSchedule, setNewCourseSchedule] = useState<Array<{ day: string; start_time: string; end_time: string }>>([
-    { day: 'Lunes', start_time: '14:00', end_time: '16:00' }
+  const [newCourseSchedule, setNewCourseSchedule] = useState<Array<{ day: string; start_time: string; end_time: string; main_teacher_id: string }>>([
+    { day: 'Lunes', start_time: '14:00', end_time: '16:00', main_teacher_id: '' }
   ]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchParam = params.get('search');
+    if (searchParam) {
+      setCourseSearch(searchParam);
+    }
+
     Promise.all([
       fetch('/api/auth/me').then(res => res.json()),
       getCourses(), 
@@ -39,7 +44,13 @@ export default function CursosPage() {
       if (authData.success && authData.user) {
         setCurrentUser(authData.user);
         if (authData.user.role === 'TEACHER') {
-          setDbCourses(courses.filter(c => c.teacher_id === authData.user.id));
+          setDbCourses(courses.filter(c => 
+            c.schedule?.some(s => 
+              s.main_teacher_id === authData.user!.id || 
+              s.support_teacher_1_id === authData.user!.id || 
+              s.support_teacher_2_id === authData.user!.id
+            )
+          ));
         } else {
           setDbCourses(courses);
         }
@@ -61,23 +72,12 @@ export default function CursosPage() {
       return;
     }
 
-    let resolvedTeacherId = newCourseForm.teacher_id;
-    if (!resolvedTeacherId) {
-      const activeTeacher = dbUsers.find((u) => u.role === UserRole.TEACHER && u.status === UserStatus.ACTIVE);
-      if (!activeTeacher) {
-        toast.error('Error Crítico: No hay maestros activos en el sistema.');
-        return;
-      }
-      resolvedTeacherId = activeTeacher.id;
-    }
-
     try {
       const response = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newCourseForm,
-          teacher_id: resolvedTeacherId,
           schedule: newCourseSchedule,
           clientCourses: dbCourses,
         }),
@@ -91,8 +91,8 @@ export default function CursosPage() {
 
       setDbCourses([...dbCourses, data.course]);
       setShowAddCourseModal(false);
-      setNewCourseForm({ nombre_curso: '', teacher_id: '' });
-      setNewCourseSchedule([{ day: 'Lunes', start_time: '14:00', end_time: '16:00' }]);
+      setNewCourseForm({ nombre_curso: '' });
+      setNewCourseSchedule([{ day: 'Lunes', start_time: '14:00', end_time: '16:00', main_teacher_id: '' }]);
       toast.success(`¡Curso registrado de manera exitosa!`);
     } catch {
       toast.error('Error al enviar la solicitud de creación de curso.');
@@ -195,12 +195,7 @@ export default function CursosPage() {
                     {course.nombre_curso}
                   </h3>
                   
-                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-2">
-                    <Users className="h-3.5 w-3.5" />
-                    <span>Maestro: {teacher ? `${teacher.nombres} ${teacher.apellidos}` : 'No asignado'}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-4">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-4 mt-2">
                     <Users className="h-3.5 w-3.5 text-emerald-500" />
                     <span>Estudiantes Inscritos: <strong className="text-slate-800">{dbStudents.filter(s => s.curso_actual === course.id || s.curso_actual === course.nombre_curso).length}</strong></span>
                   </div>
@@ -211,12 +206,15 @@ export default function CursosPage() {
                     </h4>
                     {course.schedule && course.schedule.length > 0 ? (
                       <div className="space-y-1">
-                        {course.schedule.map((s, idx) => (
-                          <div key={idx} className="flex justify-between text-xs">
-                            <span className="font-bold text-slate-600">{s.day}</span>
-                            <span className="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-mono">{s.start_time} - {s.end_time}</span>
-                          </div>
-                        ))}
+                        {course.schedule.map((s, idx) => {
+                          const mainTeacher = dbUsers.find(u => u.id === s.main_teacher_id);
+                          return (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span className="font-bold text-slate-600">{s.day} <span className="font-normal text-[10px] text-slate-400">({mainTeacher?.nombres || 'Sin Maestro'})</span></span>
+                              <span className="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-mono">{s.start_time} - {s.end_time}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-xs text-slate-400 italic">No hay horarios registrados</p>
@@ -272,15 +270,6 @@ export default function CursosPage() {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre del Curso *</label>
                   <input type="text" required value={newCourseForm.nombre_curso} onChange={e => setNewCourseForm({...newCourseForm, nombre_curso: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Maestro Asignado</label>
-                  <select value={newCourseForm.teacher_id} onChange={e => setNewCourseForm({...newCourseForm, teacher_id: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50">
-                    <option value="">Selección Automática / Ninguno</option>
-                    {dbUsers.filter(u => u.role === UserRole.TEACHER).map(t => (
-                      <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
-                    ))}
-                  </select>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

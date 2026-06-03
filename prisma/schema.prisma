@@ -18,14 +18,13 @@ model attendance {
 }
 
 model courses {
-  id           String       @id @db.VarChar(100)
-  nombre_curso String       @db.VarChar(255)
-  teacher_id   String       @db.VarChar(100)
-  status       String       @db.VarChar(50)
+  id           String         @id @db.VarChar(100)
+  nombre_curso String         @db.VarChar(255)
+  status       String         @db.VarChar(50)
   schedule     Json?
   attendance   attendance[]
-  users        users        @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   students     students[]
+  lesson_plans lesson_plans[]
 }
 
 model guardians {
@@ -90,8 +89,19 @@ model users {
   contacto_emergencia String?   @db.VarChar(100)
   parentesco_contacto String?   @db.VarChar(100)
   avatar_url          String?   @db.Text
-  courses             courses[]
   expenses            expenses[]
+}
+
+model lesson_plans {
+  id          String   @id @db.VarChar(100)
+  course_id   String?  @db.VarChar(100)
+  week_start  String?  @db.VarChar(50)
+  week_end    String?  @db.VarChar(50)
+  topic       String   @db.VarChar(255)
+  description String   @db.Text
+  resources   Json?
+  level       String?  @db.VarChar(50)
+  courses     courses? @relation(fields: [course_id], references: [id], onDelete: Cascade)
 }
 
 model expenses {
