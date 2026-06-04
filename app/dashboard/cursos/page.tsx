@@ -177,7 +177,6 @@ export default function CursosPage() {
           </div>
         ) : (
           filteredCourses.map((course) => {
-            const teacher = dbUsers.find((u) => u.id === course.teacher_id);
             return (
               <div key={course.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg transition-all group flex flex-col h-full overflow-hidden">
                 <div className="p-6">

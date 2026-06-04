@@ -129,12 +129,24 @@ export interface LessonPlan {
 
 // Predefined schools in La Virginia, Risaralda, Colombia
 export const COLEGIOS_LA_VIRGINIA = [
+  // Públicos (Instituciones Educativas Oficiales)
   'Institución Educativa Bernardo Arias Trujillo',
-  'Institución Educativa Gabriela Mistral',
-  'Institución Educativa La Virginia',
+  'Institución Educativa Liceo Gabriela Mistral',
+  'Institución Educativa Alfonso López Pumarejo',
   'Institución Educativa Pedro Pablo Bello',
-  'Colegio Nuestra Señora de la Presentación',
   'Liceo Integrado de La Virginia',
+  'Centro Educativo Bachillerato en Bienestar Rural',
+
+  // Privados / Colegios
+  'Colegio Nuestra Señora de la Presentación',
+  'Colegio La Real Academia',
+
+  // Jardines Infantiles / Preescolar
+  'Hogar Infantil Comunitario La Virginia (ICBF)',
+  'Jardines del Renacer',
+  'Preescolar Instituto Feducar',
+
+  // Otros
   'Otro / Particular',
 ];
 

@@ -31,7 +31,7 @@ export function EnrollmentForm({ onSuccess, dbStudents }: EnrollmentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!form.documento_identidad || !form.nombres || !form.apellidos || !form.guardian_nombre_completo || !form.guardian_direccion || !form.guardian_telefono) {
       toast.error('Por favor complete todos los datos obligatorios.');
       return;
@@ -126,6 +126,7 @@ export function EnrollmentForm({ onSuccess, dbStudents }: EnrollmentFormProps) {
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Año o Grado Escolar</label>
             <select value={form.grado_escolar} onChange={(e) => setForm({ ...form, grado_escolar: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium text-slate-700">
+              <option value="Jardín / Guardería">Jardín / Guardería</option>
               <option value="Preescolar / Transición">Preescolar / Transición</option>
               <option value="Primero">Primero</option>
               <option value="Segundo">Segundo</option>
