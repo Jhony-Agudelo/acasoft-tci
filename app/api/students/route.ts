@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Student, Guardian, SchoolDayPeriod, StudentStatus } from '@/lib/db-schema';
 import { isPgConfigured, dbSaveStudent, dbSaveGuardian, dbGetStudents } from '@/lib/pg-db';
+import { getSettings } from '@/lib/actions/settings.actions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
       course_id,
       status,
       payment_deadline_date,
+      payment_day,
       // Guardian details
       guardian_nombre_completo,
       guardian_direccion,
@@ -74,6 +76,25 @@ export async function POST(req: NextRequest) {
 
     // Create Student linking Guardian ID and Course ID
     const newStudentId = `std_${Date.now()}`;
+    // Calculate dynamic deadline if not provided
+    const settings = await getSettings();
+    const finalPaymentDay = payment_day ? parseInt(payment_day) : settings.default_payment_day;
+    
+    let computedDeadline = payment_deadline_date;
+    if (!computedDeadline) {
+      const now = new Date();
+      let targetMonth = now.getMonth();
+      let targetYear = now.getFullYear();
+      if (now.getDate() > finalPaymentDay) {
+        targetMonth += 1;
+        if (targetMonth > 11) {
+          targetMonth = 0;
+          targetYear += 1;
+        }
+      }
+      computedDeadline = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(finalPaymentDay).padStart(2, '0')}`;
+    }
+
     const newStudent: Student = {
       id: newStudentId,
       documento_identidad,
@@ -87,7 +108,8 @@ export async function POST(req: NextRequest) {
       jornada_escolar: (jornada_escolar as SchoolDayPeriod) || SchoolDayPeriod.TARDE,
       guardian_id: newGuardianId,
       status: (status as StudentStatus) || StudentStatus.REGISTERED,
-      payment_deadline_date: payment_deadline_date || '2026-06-30',
+      payment_deadline_date: computedDeadline,
+      payment_day: finalPaymentDay,
       course_id: course_id || null, // Nullable/Optional assignment
     };
 
@@ -127,6 +149,7 @@ export async function PUT(req: NextRequest) {
       course_id,
       status,
       payment_deadline_date,
+      payment_day,
       // Guardian details
       guardian_id,
       guardian_nombre_completo,
@@ -166,6 +189,7 @@ export async function PUT(req: NextRequest) {
       guardian_id: guardian_id || `grd_${Date.now()}`,
       status: (status as StudentStatus) || StudentStatus.ACTIVE,
       payment_deadline_date: payment_deadline_date || '2026-06-30',
+      payment_day: payment_day !== undefined ? parseInt(payment_day) : 15,
       course_id: course_id !== undefined ? course_id : null,
     };
 

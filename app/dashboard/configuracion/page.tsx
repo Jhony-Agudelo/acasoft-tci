@@ -84,6 +84,21 @@ export default function ConfiguracionPage() {
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-bold uppercase text-slate-600 mb-2">
+              Día Límite de Pago Mensual (Por Defecto)
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="31"
+              value={editedSettings.default_payment_day}
+              onChange={(e) => setEditedSettings({ ...editedSettings, default_payment_day: parseInt(e.target.value) || 15 })}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 focus:bg-white transition-all"
+            />
+            <p className="text-xs text-slate-500 mt-1">Este será el día de pago predeterminado al matricular un nuevo estudiante.</p>
+          </div>
+
           <button
             onClick={handleUpdateSettings}
             className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"

@@ -93,7 +93,12 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
           // Fill missing ones with 'PRESENT' default
           const finalData = { ...attendanceData };
           Array.from(assignedStudentIds).forEach(id => {
-            if (!finalData[id]) finalData[id] = 'PRESENT';
+            const student = students.find(s => s.id === id);
+            if (student?.status === 'BLOCKED') {
+              delete finalData[id];
+            } else {
+              if (!finalData[id]) finalData[id] = 'PRESENT';
+            }
           });
           await onSaveAttendance(course.id, finalData);
           toast.success('Asistencia guardada exitosamente');
@@ -245,14 +250,14 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
               {isTeacher && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-lg">Modo Asistencia</span>}
             </h4>
             <div className="bg-slate-50 border border-slate-200 rounded-xl max-h-64 overflow-y-auto p-4 space-y-2">
-              {students.filter(s => s.status !== StudentStatus.REGISTERED).length === 0 ? (
+              {students.filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED').length === 0 ? (
                 <p className="text-xs text-slate-500 text-center">No hay estudiantes activos en el sistema.</p>
               ) : (
                 students
-                  .filter(s => s.status !== StudentStatus.REGISTERED)
+                  .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED')
                   .filter(s => isTeacher ? assignedStudentIds.has(s.id) : true) // Teachers only see assigned students
                   .map(student => (
-                  <label key={student.id} className="flex items-center justify-between p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200">
+                  <label key={student.id} className={`flex items-center justify-between p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200 ${student.status === 'BLOCKED' ? 'opacity-70 bg-rose-50/40' : ''}`}>
                     <div className="flex items-center gap-3">
                       {!isTeacher && (
                         <input 
@@ -268,11 +273,15 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
                       </div>
                     </div>
                     {isTeacher && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
+                        {student.status === 'BLOCKED' && (
+                          <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md uppercase">Mora</span>
+                        )}
                         <select 
-                          className="text-xs border border-slate-200 p-1.5 rounded-lg bg-white focus:ring-orange-500" 
+                          className="text-xs border border-slate-200 p-1.5 rounded-lg bg-white focus:ring-orange-500 disabled:opacity-50" 
                           value={attendanceData[student.id] || 'PRESENT'}
                           onChange={e => setAttendanceData({...attendanceData, [student.id]: e.target.value})}
+                          disabled={student.status === 'BLOCKED'}
                         >
                           <option value="PRESENT">Presente</option>
                           <option value="ABSENT">Ausente</option>

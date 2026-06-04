@@ -94,7 +94,7 @@ export function LoginForm({ onLoginSuccess, addLog, dbUsers }: LoginFormProps) {
     <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-2xl shadow-orange-900/5 relative overflow-hidden group">
       {/* Decors */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-100 to-transparent rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/3 group-hover:translate-x-1/4 transition-transform duration-1000"></div>
-      
+
       <div className="relative z-10">
         <h2 className="text-3xl font-extrabold text-slate-800 font-display mb-2">Ingreso al Portal</h2>
         <p className="text-slate-500 text-sm mb-8 font-medium">Inicie sesión para acceder al panel de control de TCI.</p>
@@ -179,15 +179,6 @@ export function LoginForm({ onLoginSuccess, addLog, dbUsers }: LoginFormProps) {
             )}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <p className="text-xs text-center text-slate-500 font-medium mb-4">Accesos Rápidos (Testing Demo)</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <button onClick={() => handleFastLogin(UserRole.DIRECTOR, 'luisa.canizales@tci.com')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 transition-colors">Directora</button>
-            <button onClick={() => handleFastLogin(UserRole.ADMIN, 'jhony.agudelo@tci.com')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 transition-colors">Admin</button>
-            <button onClick={() => handleFastLogin(UserRole.TEACHER, 'isabella.castaneda@tci.com')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 transition-colors">Maestra</button>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -59,6 +59,7 @@ model students {
   guardian_id           String       @db.VarChar(100)
   status                String       @db.VarChar(50)
   payment_deadline_date String       @db.VarChar(50)
+  payment_day           Int          @default(15)
   course_id             String?      @db.VarChar(100)
   avatar_url            String?      @db.Text
   attendance            attendance[]
@@ -70,8 +71,9 @@ model students {
 model system_settings {
   id               String  @id @db.VarChar(100)
   enrollment_open  Boolean
-  academic_year    String  @db.VarChar(50)
-  institution_name String  @db.VarChar(255)
+  academic_year      String  @db.VarChar(50)
+  institution_name   String  @db.VarChar(255)
+  default_payment_day Int    @default(15)
 }
 
 model users {

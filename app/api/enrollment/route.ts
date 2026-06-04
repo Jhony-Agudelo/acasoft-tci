@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Student, Guardian, SchoolDayPeriod, StudentStatus } from '@/lib/db-schema';
 import { isPgConfigured, dbSaveStudent, dbSaveGuardian, dbGetStudents } from '@/lib/pg-db';
+import { getSettings } from '@/lib/actions/settings.actions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,6 +70,22 @@ export async function POST(req: NextRequest) {
 
     // Create Student linking Guardian ID
     const newStudentId = `std_${Date.now()}`;
+    
+    // Calculate dynamic deadline based on default settings
+    const settings = await getSettings();
+    const finalPaymentDay = settings.default_payment_day;
+    const now = new Date();
+    let targetMonth = now.getMonth();
+    let targetYear = now.getFullYear();
+    if (now.getDate() > finalPaymentDay) {
+      targetMonth += 1;
+      if (targetMonth > 11) {
+        targetMonth = 0;
+        targetYear += 1;
+      }
+    }
+    const computedDeadline = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(finalPaymentDay).padStart(2, '0')}`;
+
     const newStudent: Student = {
       id: newStudentId,
       documento_identidad,
@@ -83,7 +100,8 @@ export async function POST(req: NextRequest) {
       guardian_id: newGuardianId,
       // Public enrollments are always REGISTERED initially
       status: StudentStatus.REGISTERED, 
-      payment_deadline_date: '2026-06-30',
+      payment_deadline_date: computedDeadline,
+      payment_day: finalPaymentDay,
       course_id: null, // Public cannot assign courses
     };
 

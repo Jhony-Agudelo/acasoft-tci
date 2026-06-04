@@ -5,7 +5,7 @@ import { isPgConfigured, dbSaveSettings } from '@/lib/pg-db';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, enrollment_open, academic_year, institution_name } = body as SystemSettings;
+    const { id, enrollment_open, academic_year, institution_name, default_payment_day } = body as SystemSettings;
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'Falta el ID de configuración' }, { status: 400 });
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
       enrollment_open: Boolean(enrollment_open),
       academic_year,
       institution_name,
+      default_payment_day: default_payment_day || 15,
     };
 
     if (isPgConfigured()) {

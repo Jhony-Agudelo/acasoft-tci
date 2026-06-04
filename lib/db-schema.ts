@@ -19,6 +19,7 @@ export enum StudentStatus {
   IN_INTERVIEW = 'IN_INTERVIEW',
   ACTIVE = 'ACTIVE',
   BLOCKED = 'BLOCKED',
+  RETIRED = 'RETIRED',
 }
 
 export interface User {
@@ -59,6 +60,7 @@ export interface Student {
   guardian_id: string; // Reference to Guardian
   status: StudentStatus;
   payment_deadline_date: string; // YYYY-MM-DD
+  payment_day: number;
   course_id?: string | null; // Foreign Key to Course (Nullable / Optional)
 }
 
@@ -83,6 +85,7 @@ export interface SystemSettings {
   enrollment_open: boolean;
   academic_year: string;
   institution_name: string;
+  default_payment_day: number;
 }
 
 export enum AttendanceStatus {
@@ -237,9 +240,10 @@ export const INITIAL_STUDENTS: Student[] = [
     curso_actual: 'Kids Starter',
     jornada_escolar: SchoolDayPeriod.TARDE,
     guardian_id: 'grd_martin',
-    status: StudentStatus.REGISTERED,
+    status: StudentStatus.ACTIVE,
     payment_deadline_date: '2026-06-30',
-    course_id: null,
+    payment_day: 15,
+    course_id: 'c1',
   }
 ];
 

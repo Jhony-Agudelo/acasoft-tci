@@ -141,7 +141,25 @@ export function EditStudentModal({ student, guardian, onClose, onSave }: EditMod
                 <option value="IN_INTERVIEW">Entrevista</option>
                 <option value="ACTIVE">Activo</option>
                 <option value="BLOCKED">Bloqueado (Mora)</option>
+                <option value="RETIRED">Retirado</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Día de Pago (1-31)</label>
+              <input type="number" min="1" max="31" value={formData.payment_day || 15} onChange={e => {
+                const newDay = parseInt(e.target.value) || 15;
+                const oldDate = new Date(formData.payment_deadline_date + 'T12:00:00');
+                if (!isNaN(oldDate.getTime())) {
+                  const nextMonth = oldDate.getMonth();
+                  oldDate.setDate(newDay);
+                  if (oldDate.getMonth() !== nextMonth) {
+                    oldDate.setDate(0); // prevent overflow
+                  }
+                  setFormData({...formData, payment_day: newDay, payment_deadline_date: oldDate.toISOString().split('T')[0]});
+                } else {
+                  setFormData({...formData, payment_day: newDay});
+                }
+              }} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" />
             </div>
           </div>
 

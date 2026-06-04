@@ -14,6 +14,7 @@ export async function getSettings(): Promise<SystemSettings> {
       enrollment_open: settings.enrollment_open,
       academic_year: settings.academic_year,
       institution_name: settings.institution_name,
+      default_payment_day: settings.default_payment_day || 15,
     };
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -29,12 +30,14 @@ export async function saveSettings(settings: SystemSettings): Promise<boolean> {
         enrollment_open: settings.enrollment_open,
         academic_year: settings.academic_year,
         institution_name: settings.institution_name,
+        default_payment_day: settings.default_payment_day,
       },
       create: {
         id: settings.id,
         enrollment_open: settings.enrollment_open,
         academic_year: settings.academic_year,
         institution_name: settings.institution_name,
+        default_payment_day: settings.default_payment_day,
       },
     });
     return true;

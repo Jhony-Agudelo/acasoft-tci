@@ -19,6 +19,7 @@ function mapStudent(prismaStudent: any): Student {
     guardian_id: prismaStudent.guardian_id,
     status: prismaStudent.status as StudentStatus,
     payment_deadline_date: prismaStudent.payment_deadline_date,
+    payment_day: prismaStudent.payment_day,
     course_id: prismaStudent.course_id || null,
   };
 }
@@ -52,6 +53,7 @@ export async function saveStudent(student: Student): Promise<boolean> {
         guardian_id: student.guardian_id,
         status: student.status,
         payment_deadline_date: student.payment_deadline_date,
+        payment_day: student.payment_day,
         course_id: student.course_id || null,
       },
       create: {
@@ -68,6 +70,7 @@ export async function saveStudent(student: Student): Promise<boolean> {
         guardian_id: student.guardian_id,
         status: student.status,
         payment_deadline_date: student.payment_deadline_date,
+        payment_day: student.payment_day,
         course_id: student.course_id || null,
       },
     });

@@ -11,6 +11,7 @@ export default function DashboardHome() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [stats, setStats] = useState({ students: 0, courses: 0, payments: 0 });
   const [teacherCourses, setTeacherCourses] = useState<Course[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function DashboardHome() {
           ));
         }
       }
+      setAllStudents(students);
       setStats({
         students: students.length,
         courses: courses.length,
@@ -57,7 +59,7 @@ export default function DashboardHome() {
   // Compute teacher schedule for today
   const todayName = new Date().toLocaleDateString('es-CO', { weekday: 'long' });
   const todayCapitalized = todayName.charAt(0).toUpperCase() + todayName.slice(1);
-  let todayClasses: Array<{courseName: string, start: string, end: string}> = [];
+  let todayClasses: Array<{courseId: string, courseName: string, start: string, end: string}> = [];
   
   // All users can have today classes if they are in the schedule
   teacherCourses.forEach(c => {
@@ -69,7 +71,7 @@ export default function DashboardHome() {
             (s.day === 'Miércoles' && todayCapitalized === 'Miercoles') ||
             (s.day === 'Sabado' && todayCapitalized === 'Sábado') ||
             (s.day === 'Sábado' && todayCapitalized === 'Sabado')) {
-          todayClasses.push({ courseName: c.nombre_curso, start: s.start_time, end: s.end_time });
+          todayClasses.push({ courseId: c.id, courseName: c.nombre_curso, start: s.start_time, end: s.end_time });
         }
       }
     });
@@ -78,6 +80,14 @@ export default function DashboardHome() {
   todayClasses.sort((a, b) => a.start.localeCompare(b.start));
 
   if (loading) return <div className="p-10 font-bold text-slate-500 text-center">Cargando inicio...</div>;
+
+  let blockedStudentsList = [];
+  if (isTeacher) {
+    const todayCourseIds = todayClasses.map(c => c.courseId);
+    blockedStudentsList = allStudents.filter(s => s.status === 'BLOCKED' && s.course_id && todayCourseIds.includes(s.course_id));
+  } else {
+    blockedStudentsList = allStudents.filter(s => s.status === 'BLOCKED');
+  }
 
   return (
     <div className="space-y-6">
@@ -90,6 +100,38 @@ export default function DashboardHome() {
           </p>
         </div>
       </div>
+
+      {blockedStudentsList.length > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 shadow-sm flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-rose-800 text-sm">⚠️ Alerta de Morosidad</h3>
+            <p className="text-xs text-rose-600 mt-1">
+              {isTeacher 
+                ? `Tienes ${blockedStudentsList.length} estudiante(s) bloqueado(s) por mora en tus clases de hoy. No podrás tomarles asistencia.`
+                : `Hay ${blockedStudentsList.length} estudiante(s) bloqueado(s) por mora en toda la academia.`}
+            </p>
+            {isTeacher && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {blockedStudentsList.map(s => (
+                  <span key={s.id} className="bg-white/50 border border-rose-200 text-rose-700 px-2.5 py-1 rounded-md text-[10px] font-bold">
+                    {s.nombres} {s.apellidos}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {!isTeacher && (
+            <a href="/dashboard/estudiantes" className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+              Ver Estudiantes
+            </a>
+          )}
+        </div>
+      )}
 
       {!isTeacher && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

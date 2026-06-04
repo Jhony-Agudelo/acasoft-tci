@@ -152,7 +152,8 @@ export default function EstudiantesPage() {
             <option value={StudentStatus.REGISTERED}>Inscrito (Pre-Matriculado)</option>
             <option value={StudentStatus.IN_INTERVIEW}>En Entrevista</option>
             <option value={StudentStatus.ACTIVE}>Activo (Cursando)</option>
-            <option value={StudentStatus.BLOCKED}>Bloqueado (Mora/Baja)</option>
+            <option value={StudentStatus.BLOCKED}>Bloqueado (Mora)</option>
+            <option value="RETIRED">Retirado</option>
           </select>
         </div>
       </div>
@@ -198,10 +199,12 @@ export default function EstudiantesPage() {
                           ${student.status === StudentStatus.ACTIVE ? 'bg-emerald-100 text-emerald-700' :
                             student.status === StudentStatus.REGISTERED ? 'bg-blue-100 text-blue-700' :
                               student.status === StudentStatus.IN_INTERVIEW ? 'bg-amber-100 text-amber-700' :
+                                student.status === 'RETIRED' ? 'bg-slate-200 text-slate-700' :
                                 'bg-rose-100 text-rose-700'}`}>
                           {student.status === StudentStatus.REGISTERED ? 'INSCRITO' :
                             student.status === StudentStatus.IN_INTERVIEW ? 'ENTREVISTA' :
-                              student.status === StudentStatus.ACTIVE ? 'ACTIVO' : 'BLOQUEADO'}
+                              student.status === StudentStatus.ACTIVE ? 'ACTIVO' : 
+                                student.status === 'RETIRED' ? 'RETIRADO' : 'MORA'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">

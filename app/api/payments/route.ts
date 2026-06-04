@@ -49,7 +49,17 @@ export async function POST(req: NextRequest) {
     }
     
     // Add 1 month to the deadline
+    const paymentDay = student.payment_day || 15;
+    deadlineDateObj.setDate(1); // prevent overflow before adding month
     deadlineDateObj.setMonth(deadlineDateObj.getMonth() + 1);
+    
+    // Set to paymentDay, or the last day of the month if paymentDay > days in month
+    const nextMonth = deadlineDateObj.getMonth();
+    deadlineDateObj.setDate(paymentDay);
+    if (deadlineDateObj.getMonth() !== nextMonth) {
+      deadlineDateObj.setDate(0); // Back to last day of previous month
+    }
+    
     const newDeadline = deadlineDateObj.toISOString().split('T')[0];
     
     // Create copy of student with mutations
