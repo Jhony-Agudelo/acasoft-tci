@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
 import { Inter, Fredoka } from 'next/font/google';
 import './globals.css'; // Global styles
 
@@ -14,11 +14,11 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
-  title: 'Translinguakids - Portal de Gestión Educativa',
-  description: 'MVP Fase 1: Control de Autenticación, Roles y Base de Datos Académica',
+  title: 'Taller Creativo De Inglés',
+  description: 'Portal de Gestión Educativa',
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${inter.variable} ${fredoka.variable}`}>
       <body className="bg-slate-50 text-slate-800 antialiased font-sans" suppressHydrationWarning>

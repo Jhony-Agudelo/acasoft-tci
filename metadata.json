@@ -1,6 +1,8 @@
 {
   "name": "TCI - Taller Creativo De Inglés",
-  "description": "Sistema de gestión educativa (Fase 2: CRUDs de Estudiantes, Maestros, Cursos y Dashboard de Directivos)",
+  "description": "Sistema de gestión educativa",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

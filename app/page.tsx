@@ -78,16 +78,16 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-white font-extrabold font-display text-2xl tracking-tight leading-none">TCI</h1>
-              <p className="text-orange-100 font-medium text-xs tracking-wider uppercase mt-1">Taller Creativo</p>
+              <p className="text-orange-100 font-medium text-xs tracking-wider uppercase mt-1">Taller Creativo De Inglés</p>
             </div>
           </div>
 
           <div className="relative z-10 my-16 lg:my-auto">
             <h2 className="text-4xl lg:text-5xl font-extrabold text-white font-display leading-tight mb-6 drop-shadow-sm">
-              Potencia tu futuro con el inglés.
+              Potencia la creatividad de tus hijos con el inglés.
             </h2>
             <p className="text-orange-50 text-lg font-medium leading-relaxed max-w-md">
-              Sistema de gestión académica integral para estudiantes, maestros y directivos del Taller Creativo De Inglés.
+              Abre las puertas de un mundo lleno de oportunidades para tus pequeños. Inscríbelos hoy en Taller Creativo de Inglés y acompáñalos en su camino hacia un futuro brillante y bilingüe.
             </p>
 
             <div className="mt-12 flex flex-col sm:flex-row gap-4">
@@ -114,7 +114,7 @@ export default function Home() {
 
         <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12 relative">
           <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-50 via-slate-50 to-slate-50 -z-10"></div>
-          
+
           <div className="w-full max-w-2xl">
             <AnimatePresence mode="wait">
               {unauthView === 'login' && (
@@ -137,15 +137,15 @@ export default function Home() {
                           <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-3">Detalles del Registro</p>
                           <div className="space-y-2 text-sm font-medium">
                             <p className="text-slate-700 flex justify-between">
-                              <span className="text-slate-500">Estudiante:</span> 
+                              <span className="text-slate-500">Estudiante:</span>
                               <span>{registeredStudentInfo.student.nombres} {registeredStudentInfo.student.apellidos}</span>
                             </p>
                             <p className="text-slate-700 flex justify-between">
-                              <span className="text-slate-500">Documento:</span> 
+                              <span className="text-slate-500">Documento:</span>
                               <span className="font-mono">{registeredStudentInfo.student.documento_identidad}</span>
                             </p>
                             <p className="text-slate-700 flex justify-between">
-                              <span className="text-slate-500">Acudiente:</span> 
+                              <span className="text-slate-500">Acudiente:</span>
                               <span>{registeredStudentInfo.guardian.nombre_completo}</span>
                             </p>
                           </div>
