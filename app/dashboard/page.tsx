@@ -5,7 +5,7 @@ import { BookOpen, Users, DollarSign, Calendar } from 'lucide-react';
 import { getStudents } from '@/lib/actions/student.actions';
 import { getCourses } from '@/lib/actions/course.actions';
 import { getPayments } from '@/lib/actions/payment.actions';
-import { User, Course } from '@/lib/db-schema';
+import { User, Course, Student } from '@/lib/db-schema';
 
 export default function DashboardHome() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);

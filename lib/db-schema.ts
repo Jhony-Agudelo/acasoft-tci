@@ -110,6 +110,16 @@ export interface Payment {
   period_covered: string; // e.g., "Junio 2024"
 }
 
+export interface Expense {
+  id: string;
+  amount: number;
+  date: string;
+  category: string;
+  description: string;
+  recipient_name?: string | null;
+  teacher_id?: string | null;
+}
+
 export interface LessonPlanResource {
   title: string;
   url: string;

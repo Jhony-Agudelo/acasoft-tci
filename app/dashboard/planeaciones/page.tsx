@@ -21,7 +21,7 @@ export default function PlaneacionesPage() {
     description: '',
     level: 'Basico' as 'Basico' | 'Intermedio' | 'Avanzado',
   });
-  const [resources, setResources] = useState<Array<{ type: string; url: string; title: string }>>([]);
+  const [resources, setResources] = useState<Array<{ type: 'video' | 'document' | 'activity' | 'other'; url: string; title: string }>>([]);
 
   const loadTemplates = async () => {
     setLoading(true);
@@ -96,7 +96,7 @@ export default function PlaneacionesPage() {
 
   const updateResource = (idx: number, field: string, value: string) => {
     const newR = [...resources];
-    newR[idx] = { ...newR[idx], [field]: value };
+    newR[idx] = { ...newR[idx], [field]: value } as any;
     setResources(newR);
   };
 

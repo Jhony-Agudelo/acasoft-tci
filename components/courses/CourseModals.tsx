@@ -172,7 +172,7 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
             {!isTeacher && (
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado</label>
-                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as 'ACTIVE' | 'INACTIVE'})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
                   <option value="ACTIVE">Activo</option>
                   <option value="INACTIVE">Inactivo</option>
                 </select>
