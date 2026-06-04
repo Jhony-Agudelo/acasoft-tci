@@ -84,7 +84,11 @@ export default function DashboardHome() {
   let blockedStudentsList = [];
   if (isTeacher) {
     const todayCourseIds = todayClasses.map(c => c.courseId);
-    blockedStudentsList = allStudents.filter(s => s.status === 'BLOCKED' && s.course_id && todayCourseIds.includes(s.course_id));
+    const todayCourseNames = todayClasses.map(c => c.courseName);
+    blockedStudentsList = allStudents.filter(s => s.status === 'BLOCKED' && (
+      (s.course_id && todayCourseIds.includes(s.course_id)) ||
+      (s.curso_actual && (todayCourseIds.includes(s.curso_actual) || todayCourseNames.includes(s.curso_actual)))
+    ));
   } else {
     blockedStudentsList = allStudents.filter(s => s.status === 'BLOCKED');
   }

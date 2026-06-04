@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Search, PlusCircle, Calendar, Printer, Share2, AlertTriangle, TrendingDown, TrendingUp, Users, X } from 'lucide-react';
-import { Payment, Student, User, UserRole, StudentStatus } from '@/lib/db-schema';
+import { Payment, Student, Guardian, Expense, User, UserRole, StudentStatus } from '@/lib/db-schema';
 import { getPayments, savePayment } from '@/lib/actions/payment.actions';
 import { getStudents, saveStudent } from '@/lib/actions/student.actions';
+import { getGuardians } from '@/lib/actions/guardian.actions';
 import { getExpenses, saveExpense } from '@/lib/actions/expense.actions';
 import { getUsers } from '@/lib/actions/user.actions';
 import { toast } from 'sonner';
@@ -18,7 +19,8 @@ export default function PagosPage() {
   // Data
   const [dbPayments, setDbPayments] = useState<Payment[]>([]);
   const [dbStudents, setDbStudents] = useState<Student[]>([]);
-  const [dbExpenses, setDbExpenses] = useState<any[]>([]);
+  const [dbGuardians, setDbGuardians] = useState<Guardian[]>([]);
+  const [dbExpenses, setDbExpenses] = useState<Expense[]>([]);
   const [dbUsers, setDbUsers] = useState<User[]>([]);
 
   // Month Filter
@@ -38,12 +40,13 @@ export default function PagosPage() {
 
   // Receipt
   const receiptRef = useRef<HTMLDivElement>(null);
-  const [currentReceiptData, setCurrentReceiptData] = useState<{payment: Payment, student: Student} | null>(null);
+  const [currentReceiptData, setCurrentReceiptData] = useState<{ payment: Payment, student: Student } | null>(null);
 
   useEffect(() => {
-    Promise.all([getPayments(), getStudents(), getExpenses(), getUsers()]).then(([payments, students, expenses, users]) => {
+    Promise.all([getPayments(), getStudents(), getGuardians(), getExpenses(), getUsers()]).then(([payments, students, guardians, expenses, users]) => {
       setDbPayments(payments);
       setDbStudents(students);
+      setDbGuardians(guardians);
       setDbExpenses(expenses);
       setDbUsers(users);
       setLoading(false);
@@ -83,7 +86,7 @@ export default function PagosPage() {
       setDbPayments([data.payment, ...dbPayments]);
       setShowAddPaymentModal(false);
       toast.success('¡Pago registrado exitosamente!');
-      
+
       // Load receipt for printing
       setCurrentReceiptData({ payment: data.payment, student: selectedStudentForPayment });
 
@@ -102,46 +105,53 @@ export default function PagosPage() {
     if (!currentReceiptData) return;
     try {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
-      
+
       pdf.setFontSize(14);
       pdf.setFont("helvetica", "bold");
-      pdf.text("TCI - ACADEMIA", 40, 15, { align: "center" });
-      
+      pdf.text("TCI", 40, 15, { align: "center" });
+
       pdf.setFontSize(10);
       pdf.setFont("helvetica", "normal");
       pdf.text("Taller Creativo De Ingles", 40, 22, { align: "center" });
       pdf.text("------------------------------------------------", 40, 28, { align: "center" });
-      
+
       pdf.setFontSize(9);
       pdf.text(`Fecha: ${currentReceiptData.payment.payment_date}`, 10, 36);
       pdf.text(`Factura #: ${currentReceiptData.payment.id.split('_')[1]}`, 10, 42);
+      
+      const guardian = dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id);
       pdf.text(`Estudiante: ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}`, 10, 48);
       pdf.text(`Documento: ${currentReceiptData.student.documento_identidad || 'N/A'}`, 10, 54);
-      
-      pdf.text("------------------------------------------------", 40, 62, { align: "center" });
+      pdf.text(`Acudiente: ${guardian ? guardian.nombre_completo : 'N/A'}`, 10, 60);
+
+      const paymentMonth = new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+      pdf.text(`Mes de Pago: ${paymentMonth.charAt(0).toUpperCase() + paymentMonth.slice(1)}`, 10, 66);
+
+      pdf.text("------------------------------------------------", 40, 72, { align: "center" });
       pdf.setFont("helvetica", "bold");
-      pdf.text("Concepto", 10, 68);
-      pdf.text("Valor", 70, 68, { align: "right" });
+      pdf.text("Concepto", 10, 78);
+      pdf.text("Valor", 70, 78, { align: "right" });
       pdf.setFont("helvetica", "normal");
-      pdf.text("------------------------------------------------", 40, 74, { align: "center" });
-      
+      pdf.text("------------------------------------------------", 40, 84, { align: "center" });
+
       // Auto-wrap text for concept
       const splitConcept = pdf.splitTextToSize(currentReceiptData.payment.period_covered, 40);
-      pdf.text(splitConcept, 10, 80);
-      pdf.text(`$${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 80, { align: "right" });
-      
-      pdf.text("------------------------------------------------", 40, 95, { align: "center" });
+      pdf.text(splitConcept, 10, 90);
+      pdf.text(`$${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 90, { align: "right" });
+
+      pdf.text("------------------------------------------------", 40, 105, { align: "center" });
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
-      pdf.text(`TOTAL: $${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 105, { align: "right" });
-      
+      pdf.text("TOTAL", 10, 115);
+      pdf.text(`$${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 115, { align: "right" });
+
       pdf.setFontSize(8);
       pdf.setFont("helvetica", "italic");
-      pdf.text("Gracias por su pago.", 40, 120, { align: "center" });
-      pdf.text("Conserve este recibo.", 40, 125, { align: "center" });
+      pdf.text("Gracias por su pago.", 40, 130, { align: "center" });
+      pdf.text("Conserve este recibo.", 40, 135, { align: "center" });
 
       pdf.save(`Recibo_${currentReceiptData.payment.id}.pdf`);
-      
+
       const text = `Hola! Confirmamos el recibo de pago por valor de $${currentReceiptData.payment.amount} para el estudiante ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}. Puedes descargar el comprobante adjunto. Gracias por confiar en TCI.`;
       const waLink = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(waLink, '_blank');
@@ -178,9 +188,9 @@ export default function PagosPage() {
     setIsSubmitting(true);
     try {
       const expId = `exp_${Date.now()}`;
-      const expenseObj = { 
-        ...newExpense, 
-        id: expId, 
+      const expenseObj = {
+        ...newExpense,
+        id: expId,
         amount: parseFloat(newExpense.amount),
         teacher_id: newExpense.category === 'Nómina' && newExpense.teacher_id ? newExpense.teacher_id : null,
         recipient_name: newExpense.category !== 'Nómina' && newExpense.recipient_name ? newExpense.recipient_name : null,
@@ -272,7 +282,7 @@ export default function PagosPage() {
 
       {activeTab === 'INGRESOS' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          
+
           {/* FAST PAYMENT SECTION */}
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
             <div className="flex justify-between items-center mb-4">
@@ -282,7 +292,7 @@ export default function PagosPage() {
                 <input type="text" placeholder="Buscar estudiante..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm" />
               </div>
             </div>
-            
+
             <div className="overflow-x-auto max-h-64 border border-slate-100 rounded-xl">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-slate-50 sticky top-0 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
@@ -336,7 +346,7 @@ export default function PagosPage() {
                         <td className="px-6 py-4 text-right font-bold text-emerald-600 font-mono">${payment.amount.toLocaleString('es-CO')}</td>
                         <td className="px-6 py-4 text-center">
                           {student && (
-                            <button 
+                            <button
                               onClick={() => setCurrentReceiptData({ payment, student })}
                               className="text-slate-400 hover:text-[#fc7609] p-1.5 rounded-md hover:bg-orange-50 transition-colors inline-flex items-center"
                               title="Ver e Imprimir Recibo"
@@ -435,9 +445,9 @@ export default function PagosPage() {
               <p className="text-sm text-slate-500">Estudiante: <span className="font-bold text-[#fc7609]">{selectedStudentForPayment.nombres} {selectedStudentForPayment.apellidos}</span></p>
             </div>
             <form onSubmit={handleRegisterPayment} className="p-6 space-y-4">
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a pagar ($)</label><input type="number" required value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({...newPayment, period_covered: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newPayment.payment_date} onChange={e => setNewPayment({...newPayment, payment_date: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a pagar ($)</label><input type="number" required value={newPayment.amount} onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({ ...newPayment, period_covered: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newPayment.payment_date} onChange={e => setNewPayment({ ...newPayment, payment_date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
               <div className="flex justify-end gap-2 pt-4">
                 <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
                 <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-[#fc7609] rounded-lg">Guardar Pago</button>
@@ -457,7 +467,7 @@ export default function PagosPage() {
             <form onSubmit={handleRegisterExpense} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Categoría</label>
-                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value, teacher_id: ''})} className="w-full p-2 border rounded-xl bg-slate-50">
+                <select value={newExpense.category} onChange={e => setNewExpense({ ...newExpense, category: e.target.value, teacher_id: '' })} className="w-full p-2 border rounded-xl bg-slate-50">
                   <option value="Servicios">Servicios Generales</option>
                   <option value="Materiales">Materiales Académicos</option>
                   <option value="Nómina">Nómina a Maestros</option>
@@ -468,7 +478,7 @@ export default function PagosPage() {
               {newExpense.category === 'Nómina' ? (
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Seleccionar Maestro</label>
-                  <select required value={newExpense.teacher_id} onChange={e => setNewExpense({...newExpense, teacher_id: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50">
+                  <select required value={newExpense.teacher_id} onChange={e => setNewExpense({ ...newExpense, teacher_id: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50">
                     <option value="">Seleccione...</option>
                     {dbUsers.filter(u => u.role === UserRole.TEACHER || u.role === UserRole.ADMIN).map(t => (
                       <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
@@ -476,12 +486,12 @@ export default function PagosPage() {
                   </select>
                 </div>
               ) : (
-                <div><label className="block text-xs font-bold text-slate-500 mb-1">Destinatario / Proveedor</label><input type="text" value={newExpense.recipient_name} onChange={e => setNewExpense({...newExpense, recipient_name: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                <div><label className="block text-xs font-bold text-slate-500 mb-1">Destinatario / Proveedor</label><input type="text" value={newExpense.recipient_name} onChange={e => setNewExpense({ ...newExpense, recipient_name: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
               )}
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Descripción</label><input type="text" required value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor ($)</label><input type="number" required value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Descripción</label><input type="text" required value={newExpense.description} onChange={e => setNewExpense({ ...newExpense, description: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor ($)</label><input type="number" required value={newExpense.amount} onChange={e => setNewExpense({ ...newExpense, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+
               <div className="flex justify-end gap-2 pt-4">
                 <button type="button" onClick={() => setShowAddExpenseModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
                 <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-slate-800 rounded-lg">Guardar Egreso</button>
@@ -495,37 +505,44 @@ export default function PagosPage() {
       {currentReceiptData && (
         <div className="fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4 print:bg-white print:fixed print:inset-0 print:p-0">
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative print:shadow-none print:max-w-full">
-            <button onClick={() => setCurrentReceiptData(null)} className="absolute top-2 right-2 text-slate-400 print:hidden"><X className="h-5 w-5"/></button>
-            
+            <button onClick={() => setCurrentReceiptData(null)} className="absolute top-2 right-2 text-slate-400 print:hidden"><X className="h-5 w-5" /></button>
+
             {/* POS CONTENT */}
             <div ref={receiptRef} className="bg-white p-4 text-center font-mono text-sm text-black w-[80mm] mx-auto print:w-full print:p-0">
-              <h2 className="font-bold text-lg">TCI - ACADEMIA</h2>
+              <h2 className="font-bold text-lg">TCI</h2>
               <p className="text-xs mb-4 border-b border-dashed border-black pb-2">Taller Creativo De Inglés</p>
-              
+
               <div className="text-left text-xs mb-4 space-y-1">
                 <p>Fecha: {currentReceiptData.payment.payment_date}</p>
                 <p>Factura #: {currentReceiptData.payment.id.split('_')[1]}</p>
                 <p>Estudiante: {currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}</p>
                 <p>Documento: {currentReceiptData.student.documento_identidad}</p>
+                <p>Acudiente: {dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id)?.nombre_completo || 'N/A'}</p>
+                <p className="font-bold border-t border-slate-200 mt-1 pt-1">
+                  Mes Pago: {new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
+                </p>
               </div>
-              
+
               <table className="w-full text-xs text-left mb-4 border-b border-dashed border-black pb-2">
                 <thead><tr className="border-b border-dashed border-black"><th className="pb-1">Concepto</th><th className="text-right pb-1">Valor</th></tr></thead>
                 <tbody>
-                  <tr><td className="pt-2">{currentReceiptData.payment.period_covered}</td><td className="text-right pt-2">${currentReceiptData.payment.amount.toLocaleString('es-CO')}</td></tr>
+                  <tr>
+                    <td className="py-2 pr-2 leading-relaxed break-words">{currentReceiptData.payment.period_covered}</td>
+                    <td className="text-right py-2 align-top">${currentReceiptData.payment.amount.toLocaleString('es-CO')}</td>
+                  </tr>
                 </tbody>
               </table>
-              
+
               <div className="text-right font-bold text-sm mb-6">
                 TOTAL: ${currentReceiptData.payment.amount.toLocaleString('es-CO')}
               </div>
-              
-              <p className="text-[10px] text-center italic">Gracias por su pago.<br/>Conserve este recibo.</p>
+
+              <p className="text-[10px] text-center italic">Gracias por su pago.<br />Conserve este recibo.</p>
             </div>
 
             <div className="flex gap-2 mt-6 print:hidden">
-              <button onClick={handlePrintPOS} className="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Printer className="h-4 w-4"/> Imprimir POS</button>
-              <button onClick={handleShareWhatsApp} className="flex-1 bg-emerald-500 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Share2 className="h-4 w-4"/> WhatsApp PDF</button>
+              <button onClick={handlePrintPOS} className="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Printer className="h-4 w-4" /> Imprimir POS</button>
+              <button onClick={handleShareWhatsApp} className="flex-1 bg-emerald-500 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Share2 className="h-4 w-4" /> WhatsApp PDF</button>
             </div>
           </div>
         </div>
