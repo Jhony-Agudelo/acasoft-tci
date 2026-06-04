@@ -36,6 +36,7 @@ export interface User {
   direccion?: string;
   contacto_emergencia?: string;
   parentesco_contacto?: string;
+  avatar_url?: string | null;
 }
 
 export interface Guardian {
@@ -62,6 +63,7 @@ export interface Student {
   payment_deadline_date: string; // YYYY-MM-DD
   payment_day: number;
   course_id?: string | null; // Foreign Key to Course (Nullable / Optional)
+  avatar_url?: string | null;
 }
 
 export interface CourseScheduleItem {
@@ -275,7 +277,8 @@ export const INITIAL_SETTINGS: SystemSettings = {
   id: 'global_settings',
   enrollment_open: true,
   academic_year: '2026',
-  institution_name: 'TCI - Taller Creativo De Inglés',
+  institution_name: 'Taller Creativo de Inglés',
+  default_payment_day: 15,
 };
 
 export const INITIAL_PAYMENTS: Payment[] = [];

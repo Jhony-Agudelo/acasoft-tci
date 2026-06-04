@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { User } from '@/lib/db-schema';
+import { User, UserRole, UserStatus } from '@/lib/db-schema';
 import { X, User as UserIcon, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -81,14 +81,14 @@ export function EditTeacherModal({ teacher, onClose, onSave }: EditTeacherModalP
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado</label>
-              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as UserStatus})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
                 <option value="ACTIVE">ACTIVO</option>
                 <option value="INACTIVE">INACTIVO</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Rol</label>
-              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as UserRole})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
                 <option value="TEACHER">Docente</option>
                 <option value="ADMIN">Administrativo</option>
                 <option value="DIRECTOR">Director</option>

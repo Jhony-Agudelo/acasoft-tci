@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Student, Guardian, Course } from '@/lib/db-schema';
+import { Student, Guardian, Course, StudentStatus } from '@/lib/db-schema';
 import { X, User, Save, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -136,7 +136,7 @@ export function EditStudentModal({ student, guardian, onClose, onSave }: EditMod
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado</label>
-              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as StudentStatus})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
                 <option value="REGISTERED">Inscrito</option>
                 <option value="IN_INTERVIEW">Entrevista</option>
                 <option value="ACTIVE">Activo</option>
