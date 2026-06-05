@@ -11,6 +11,7 @@ import { getUsers } from '@/lib/actions/user.actions';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import logoApp from '@/assets/img/logoApp.png';
 
 export default function PagosPage() {
   const [activeTab, setActiveTab] = useState<'INGRESOS' | 'EGRESOS'>('INGRESOS');
@@ -102,63 +103,43 @@ export default function PagosPage() {
   };
 
   const handleShareWhatsApp = async () => {
-    if (!currentReceiptData) return;
+    if (!currentReceiptData || !receiptRef.current) return;
+    setIsSubmitting(true);
+    toast.info('Generando factura en alta calidad...');
     try {
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
+      const canvas = await html2canvas(receiptRef.current, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          const allElements = clonedDoc.querySelectorAll('*');
+          Array.from(allElements).forEach((el: any) => {
+            const computed = clonedDoc.defaultView?.getComputedStyle(el);
+            if (!computed) return;
+            ['borderColor', 'backgroundColor', 'color', 'textDecorationColor', 'outlineColor', 'borderBottomColor', 'borderTopColor', 'borderLeftColor', 'borderRightColor'].forEach(prop => {
+               if (computed[prop as any] && computed[prop as any].includes('oklch')) {
+                   el.style[prop] = prop === 'color' ? '#000000' : 'transparent';
+               }
+            });
+          });
+        }
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = canvas.width / 2;
+      const pdfHeight = canvas.height / 2;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [pdfWidth, pdfHeight] });
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Factura_TCI_${currentReceiptData.payment.id.split('_')[1]}.pdf`);
 
-      pdf.setFontSize(14);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("TCI", 40, 15, { align: "center" });
-
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text("Taller Creativo De Ingles", 40, 22, { align: "center" });
-      pdf.text("------------------------------------------------", 40, 28, { align: "center" });
-
-      pdf.setFontSize(9);
-      pdf.text(`Fecha: ${currentReceiptData.payment.payment_date}`, 10, 36);
-      pdf.text(`Factura #: ${currentReceiptData.payment.id.split('_')[1]}`, 10, 42);
-      
-      const guardian = dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id);
-      pdf.text(`Estudiante: ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}`, 10, 48);
-      pdf.text(`Documento: ${currentReceiptData.student.documento_identidad || 'N/A'}`, 10, 54);
-      pdf.text(`Acudiente: ${guardian ? guardian.nombre_completo : 'N/A'}`, 10, 60);
-
-      const paymentMonth = new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-      pdf.text(`Mes de Pago: ${paymentMonth.charAt(0).toUpperCase() + paymentMonth.slice(1)}`, 10, 66);
-
-      pdf.text("------------------------------------------------", 40, 72, { align: "center" });
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Concepto", 10, 78);
-      pdf.text("Valor", 70, 78, { align: "right" });
-      pdf.setFont("helvetica", "normal");
-      pdf.text("------------------------------------------------", 40, 84, { align: "center" });
-
-      // Auto-wrap text for concept
-      const splitConcept = pdf.splitTextToSize(currentReceiptData.payment.period_covered, 40);
-      pdf.text(splitConcept, 10, 90);
-      pdf.text(`$${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 90, { align: "right" });
-
-      pdf.text("------------------------------------------------", 40, 105, { align: "center" });
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("TOTAL", 10, 115);
-      pdf.text(`$${currentReceiptData.payment.amount.toLocaleString('es-CO')}`, 70, 115, { align: "right" });
-
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "italic");
-      pdf.text("Gracias por su pago.", 40, 130, { align: "center" });
-      pdf.text("Conserve este recibo.", 40, 135, { align: "center" });
-
-      pdf.save(`Recibo_${currentReceiptData.payment.id}.pdf`);
-
-      const text = `Hola! Confirmamos el recibo de pago por valor de $${currentReceiptData.payment.amount} para el estudiante ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}. Puedes descargar el comprobante adjunto. Gracias por confiar en TCI.`;
+      const text = `¡Hola! Confirmamos el recibo de pago por valor de $${currentReceiptData.payment.amount.toLocaleString('es-CO')} para el estudiante ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}. Puedes descargar el comprobante adjunto en la plataforma. Gracias por confiar en Taller Creativo de Inglés.`;
       const waLink = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(waLink, '_blank');
-      toast.success('PDF Generado exitosamente. Se ha abierto WhatsApp.');
+      toast.success('Factura generada exitosamente. Se ha abierto WhatsApp.');
     } catch (error: any) {
       console.error("PDF Error:", error);
-      toast.error('Error generando PDF: ' + (error?.message || String(error)));
+      toast.error('Error generando la factura: ' + (error?.message || String(error)));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -501,48 +482,85 @@ export default function PagosPage() {
         </div>
       )}
 
-      {/* POS RECEIPT HIDDEN (Printable area) */}
+      {/* BEAUTIFUL A4 INVOICE MODAL & HIDDEN CANVAS AREA */}
       {currentReceiptData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4 print:bg-white print:fixed print:inset-0 print:p-0">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative print:shadow-none print:max-w-full">
-            <button onClick={() => setCurrentReceiptData(null)} className="absolute top-2 right-2 text-slate-400 print:hidden"><X className="h-5 w-5" /></button>
-
-            {/* POS CONTENT */}
-            <div ref={receiptRef} className="bg-white p-4 text-center font-mono text-sm text-black w-[80mm] mx-auto print:w-full print:p-0">
-              <h2 className="font-bold text-lg">TCI</h2>
-              <p className="text-xs mb-4 border-b border-dashed border-black pb-2">Taller Creativo De Inglés</p>
-
-              <div className="text-left text-xs mb-4 space-y-1">
-                <p>Fecha: {currentReceiptData.payment.payment_date}</p>
-                <p>Factura #: {currentReceiptData.payment.id.split('_')[1]}</p>
-                <p>Estudiante: {currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}</p>
-                <p>Documento: {currentReceiptData.student.documento_identidad}</p>
-                <p>Acudiente: {dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id)?.nombre_completo || 'N/A'}</p>
-                <p className="font-bold border-t border-slate-200 mt-1 pt-1">
-                  Mes Pago: {new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
-                </p>
-              </div>
-
-              <table className="w-full text-xs text-left mb-4 border-b border-dashed border-black pb-2">
-                <thead><tr className="border-b border-dashed border-black"><th className="pb-1">Concepto</th><th className="text-right pb-1">Valor</th></tr></thead>
-                <tbody>
-                  <tr>
-                    <td className="py-2 pr-2 leading-relaxed break-words">{currentReceiptData.payment.period_covered}</td>
-                    <td className="text-right py-2 align-top">${currentReceiptData.payment.amount.toLocaleString('es-CO')}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="text-right font-bold text-sm mb-6">
-                TOTAL: ${currentReceiptData.payment.amount.toLocaleString('es-CO')}
-              </div>
-
-              <p className="text-[10px] text-center italic">Gracias por su pago.<br />Conserve este recibo.</p>
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          {/* Modal Actions */}
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 relative print:hidden">
+            <button onClick={() => setCurrentReceiptData(null)} className="absolute top-4 right-4 text-slate-400 hover:bg-slate-100 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+            
+            <div className="text-center mb-8 mt-4">
+               <div className="bg-emerald-100 text-emerald-600 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <Printer className="h-8 w-8" />
+               </div>
+               <h3 className="font-extrabold text-2xl text-slate-800 font-display">Factura Generada</h3>
+               <p className="text-slate-500 text-sm mt-2">La factura ha sido diseñada en alta calidad. Selecciona una opción para continuar.</p>
             </div>
 
-            <div className="flex gap-2 mt-6 print:hidden">
-              <button onClick={handlePrintPOS} className="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Printer className="h-4 w-4" /> Imprimir POS</button>
-              <button onClick={handleShareWhatsApp} className="flex-1 bg-emerald-500 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"><Share2 className="h-4 w-4" /> WhatsApp PDF</button>
+            <div className="flex flex-col gap-3">
+              <button onClick={handleShareWhatsApp} disabled={isSubmitting} className="w-full bg-[#fc7609] hover:bg-orange-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/30">
+                <Share2 className="h-5 w-5" /> Descargar PDF y Enviar
+              </button>
+              <button onClick={handlePrintPOS} disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-slate-900/20">
+                <Printer className="h-5 w-5" /> Imprimir Factura
+              </button>
+            </div>
+          </div>
+
+          {/* HIDDEN INVOICE FOR HTML2CANVAS AND PRINTING */}
+          <div className="absolute top-0 left-0 -z-50 pointer-events-none opacity-0 print:opacity-100 print:relative print:z-auto print:pointer-events-auto">
+            <div ref={receiptRef} className="bg-[#ffffff] text-[#1e293b] w-[600px] h-auto relative flex flex-col print:w-full" style={{ boxSizing: 'border-box', padding: '40px' }}>
+              {/* HEADER */}
+              <div className="flex flex-col items-center border-b-[3px] border-[#fc7609] pb-6 mb-8 text-center">
+                <img src={logoApp.src} alt="TCI Logo" className="w-28 h-auto object-contain mb-4" />
+                <h1 className="text-3xl font-extrabold text-[#fc7609] tracking-tight">TALLER CREATIVO</h1>
+                <h2 className="text-xl font-bold text-[#334155] tracking-[0.2em] mt-1">DE INGLÉS</h2>
+                <p className="text-[#64748b] mt-1 font-medium">NIT. 901.000.000-0</p>
+              </div>
+
+              {/* FACTURA INFO */}
+              <div className="flex justify-between items-center bg-[#f8fafc] p-4 rounded-2xl mb-8 border border-[#f1f5f9]">
+                 <div>
+                    <p className="text-sm font-bold text-[#94a3b8] uppercase tracking-wider">Factura N°</p>
+                    <p className="text-xl font-extrabold text-[#1e293b]">{currentReceiptData.payment.id.split('_')[1]}</p>
+                 </div>
+                 <div className="text-right">
+                    <p className="text-sm font-bold text-[#94a3b8] uppercase tracking-wider">Fecha</p>
+                    <p className="text-lg font-bold text-[#475569]">{currentReceiptData.payment.payment_date}</p>
+                 </div>
+              </div>
+
+              {/* CLIENT INFO */}
+              <div className="mb-8">
+                  <h3 className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-3">Facturado a:</h3>
+                  <div className="bg-[#ffffff] border-l-4 border-[#fc7609] pl-4">
+                    <p className="font-extrabold text-2xl text-[#1e293b] mb-1">{currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}</p>
+                    <p className="text-[#475569] text-base"><span className="font-semibold text-[#94a3b8]">Documento:</span> {currentReceiptData.student.documento_identidad}</p>
+                    <p className="text-[#475569] text-base"><span className="font-semibold text-[#94a3b8]">Acudiente:</span> {dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id)?.nombre_completo || 'N/A'}</p>
+                  </div>
+              </div>
+
+              {/* MES Y TOTAL */}
+              <div className="bg-[#ffedd5] p-6 rounded-3xl border border-[#fed7aa] mb-8 text-center">
+                  <h3 className="text-sm font-bold text-[#fb923c] uppercase tracking-widest mb-1">Mes de Pago</h3>
+                  <p className="font-extrabold text-2xl text-[#fc7609] capitalize mb-5">
+                    {new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
+                  </p>
+                  
+                  <div className="bg-[#ffffff] p-5 rounded-2xl border border-[#fed7aa] flex flex-col items-center justify-center w-full relative z-10">
+                     <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-1">Concepto</p>
+                     <p className="font-bold text-lg text-[#334155] mb-5 text-center">{currentReceiptData.payment.period_covered}</p>
+                     
+                     <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-1">Total Pagado</p>
+                     <p className="text-4xl font-extrabold text-[#fc7609] text-center">${currentReceiptData.payment.amount.toLocaleString('es-CO')}</p>
+                  </div>
+              </div>
+
+              {/* FOOTER */}
+              <div className="mt-auto pt-6 text-center border-t border-[#e2e8f0]">
+                <p className="font-extrabold text-[#1e293b] text-base mb-1">¡Gracias por confiar en Taller Creativo De Inglés!</p>
+                <p className="text-[#64748b] text-sm font-medium">Conserve este recibo digital para cualquier duda.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -551,8 +569,8 @@ export default function PagosPage() {
       <style jsx global>{`
         @media print {
           body * { visibility: hidden; }
-          .print\\:fixed, .print\\:fixed * { visibility: visible; }
-          .print\\:fixed { position: absolute; left: 0; top: 0; margin: 0; padding: 0; width: 100%; }
+          .print\\:opacity-100, .print\\:opacity-100 * { visibility: visible; }
+          .print\\:opacity-100 { position: absolute; left: 0; top: 0; margin: 0; padding: 0; width: 100%; }
         }
       `}</style>
     </div>
