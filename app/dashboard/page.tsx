@@ -7,6 +7,15 @@ import { getCourses } from '@/lib/actions/course.actions';
 import { getPayments } from '@/lib/actions/payment.actions';
 import { User, Course, Student } from '@/lib/db-schema';
 
+const format12h = (time24: string) => {
+  if (!time24) return '';
+  const [hour, min] = time24.split(':');
+  const h = parseInt(hour, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${min} ${ampm}`;
+};
+
 export default function DashboardHome() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [stats, setStats] = useState({ students: 0, courses: 0, payments: 0 });
@@ -189,7 +198,7 @@ export default function DashboardHome() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="bg-orange-100 text-orange-600 font-bold px-4 py-2 rounded-xl text-sm group-hover:bg-[#fc7609] group-hover:text-white transition-colors">
-                      {cls.start} - {cls.end}
+                      {format12h(cls.start)} - {format12h(cls.end)}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 group-hover:text-[#fc7609] transition-colors">{cls.courseName}</p>

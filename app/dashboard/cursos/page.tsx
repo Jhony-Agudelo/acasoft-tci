@@ -10,6 +10,15 @@ import { saveAttendances } from '@/lib/actions/attendance.actions';
 import { toast } from 'sonner';
 import { EditCourseModal } from '@/components/courses/CourseModals';
 
+const format12h = (time24: string) => {
+  if (!time24) return '';
+  const [hour, min] = time24.split(':');
+  const h = parseInt(hour, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${min} ${ampm}`;
+};
+
 export default function CursosPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [dbCourses, setDbCourses] = useState<Course[]>([]);
@@ -210,7 +219,7 @@ export default function CursosPage() {
                           return (
                             <div key={idx} className="flex justify-between text-xs">
                               <span className="font-bold text-slate-600">{s.day} <span className="font-normal text-[10px] text-slate-400">({mainTeacher?.nombres || 'Sin Maestro'})</span></span>
-                              <span className="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-mono">{s.start_time} - {s.end_time}</span>
+                              <span className="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-mono">{format12h(s.start_time)} - {format12h(s.end_time)}</span>
                             </div>
                           );
                         })}
@@ -243,7 +252,7 @@ export default function CursosPage() {
       {editCourse && (
         <EditCourseModal 
           course={editCourse} 
-          teachers={dbUsers.filter(u => u.role === UserRole.TEACHER)} 
+          teachers={dbUsers.filter(u => u.role === UserRole.TEACHER || u.role === UserRole.DIRECTOR)} 
           students={dbStudents}
           currentUser={currentUser}
           onClose={() => setEditCourse(null)} 

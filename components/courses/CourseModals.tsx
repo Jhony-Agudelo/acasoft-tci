@@ -216,20 +216,20 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-200 border-dashed">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Maestro Principal</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Maestro 1</label>
                       <select disabled={isTeacher} value={s.main_teacher_id} onChange={e => handleScheduleChange(idx, 'main_teacher_id', e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg bg-white text-xs disabled:opacity-70 disabled:bg-slate-100">
                         {teachers.map(t => <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Apoyo 1 (Opcional)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Maestro 2 (Opcional)</label>
                       <select disabled={isTeacher} value={s.support_teacher_1_id || ''} onChange={e => handleScheduleChange(idx, 'support_teacher_1_id', e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg bg-white text-xs disabled:opacity-70 disabled:bg-slate-100">
                         <option value="">- Ninguno -</option>
                         {teachers.map(t => <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Apoyo 2 (Opcional)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Maestro 3 (Opcional)</label>
                       <select disabled={isTeacher} value={s.support_teacher_2_id || ''} onChange={e => handleScheduleChange(idx, 'support_teacher_2_id', e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg bg-white text-xs disabled:opacity-70 disabled:bg-slate-100">
                         <option value="">- Ninguno -</option>
                         {teachers.map(t => <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>)}
