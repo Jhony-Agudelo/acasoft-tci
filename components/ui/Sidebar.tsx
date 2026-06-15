@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BookOpen, GraduationCap, Users, DollarSign, Settings, HomeIcon, X, LogOut } from 'lucide-react';
+import { BookOpen, GraduationCap, Users, DollarSign, Settings, HomeIcon, X, LogOut, BookOpenCheck, NotebookPen, School } from 'lucide-react';
 import { UserRole, User } from '@/lib/db-schema';
 import logoApp from '@/assets/img/logoApp.png';
 import { link } from 'fs';
@@ -88,7 +88,7 @@ export function Sidebar({
                 className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/cursos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
-                <BookOpen className="h-4 w-4 shrink-0" />
+                <School className="h-4 w-4 shrink-0" />
                 <span>Gestión de Cursos</span>
               </Link>
 
@@ -102,11 +102,20 @@ export function Sidebar({
               </Link>
 
               <Link
+                href="/dashboard/seguimiento"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
+                  ${pathname.includes('/seguimiento') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <BookOpenCheck className="h-4 w-4 shrink-0 text-blue-500" />
+                <span>Seguimiento</span>
+              </Link>
+
+              <Link
                 href="/dashboard/asistencia"
                 className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
                   ${pathname.includes('/asistencia') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
               >
-                <Users className="h-4 w-4 shrink-0" />
+                <NotebookPen className="h-4 w-4 shrink-0" />
                 <span>Reportes Asistencia</span>
               </Link>
 

@@ -100,6 +100,26 @@ function convertirGrado(grado: string): string {
   return grado.charAt(0).toUpperCase() + grado.slice(1);
 }
 
+function convertirColegio(colegio: string): string {
+  if (!colegio) return 'Otro / Particular';
+  
+  const normalizado = colegio.trim().toLowerCase();
+  
+  if (normalizado.includes('presentación') || normalizado.includes('presentacion')) return 'Colegio Nuestra Señora de la Presentación';
+  if (normalizado.includes('gabriela') || normalizado.includes('mistral')) return 'Institución Educativa Liceo Gabriela Mistral';
+  if (normalizado.includes('alfonso') || normalizado.includes('lópez') || normalizado.includes('lopez')) return 'Institución Educativa Alfonso López Pumarejo';
+  if (normalizado.includes('bernardo') || normalizado.includes('arias')) return 'Institución Educativa Bernardo Arias Trujillo';
+  if (normalizado.includes('real academia')) return 'Colegio La Real Academia';
+  if (normalizado.includes('pedro pablo')) return 'Institución Educativa Pedro Pablo Bello';
+  if (normalizado.includes('liceo integrado')) return 'Liceo Integrado de La Virginia';
+  if (normalizado.includes('bienestar rural')) return 'Centro Educativo Bachillerato en Bienestar Rural';
+  if (normalizado.includes('hogar infantil') || normalizado.includes('icbf')) return 'Hogar Infantil Comunitario La Virginia (ICBF)';
+  if (normalizado.includes('renacer')) return 'Jardines del Renacer';
+  if (normalizado.includes('feducar')) return 'Preescolar Instituto Feducar';
+  
+  return 'Otro / Particular';
+}
+
 async function main() {
   const lines = rawData.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
@@ -181,7 +201,7 @@ async function main() {
           apellidos,
           fecha_nacimiento,
           edad,
-          colegio_origen: colegio || 'N/A',
+          colegio_origen: convertirColegio(colegio),
           grado_escolar: grado,
           curso_actual: 'N/A',
           jornada_escolar: 'Mañana',

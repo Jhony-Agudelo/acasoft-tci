@@ -32,6 +32,7 @@ export default function PagosPage() {
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
+  const [modalStudentSearch, setModalStudentSearch] = useState('');
   const [newPayment, setNewPayment] = useState({ amount: '150000', period_covered: 'Mensualidad', payment_date: new Date().toISOString().split('T')[0] });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -272,11 +273,19 @@ export default function PagosPage() {
 
           {/* FAST PAYMENT SECTION */}
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users className="h-5 w-5 text-[#fc7609]" /> Recaudo Rápido</h3>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input type="text" placeholder="Buscar estudiante..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users className="h-5 w-5 text-[#fc7609]" /> Estudiantes Activos</h3>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input type="text" placeholder="Buscar estudiante..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm" />
+                </div>
+                <button 
+                  onClick={() => { setSelectedStudentForPayment(null); setModalStudentSearch(''); setShowAddPaymentModal(true); }} 
+                  className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm whitespace-nowrap transition-colors flex items-center gap-2"
+                >
+                  <PlusCircle className="h-4 w-4" /> Agregar Pago
+                </button>
               </div>
             </div>
 
@@ -291,7 +300,7 @@ export default function PagosPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {dbStudents.filter(s => s.nombres.toLowerCase().includes(paymentSearch.toLowerCase()) || s.documento_identidad.includes(paymentSearch)).map(student => (
+                  {dbStudents.filter(s => s.status === StudentStatus.ACTIVE && (s.nombres.toLowerCase().includes(paymentSearch.toLowerCase()) || s.documento_identidad.includes(paymentSearch))).map(student => (
                     <tr key={student.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-bold text-slate-700">{student.nombres} {student.apellidos}</td>
                       <td className="px-4 py-3 font-mono text-xs text-slate-500">{student.documento_identidad}</td>
@@ -434,22 +443,67 @@ export default function PagosPage() {
       )}
 
       {/* Add Payment Modal */}
-      {showAddPaymentModal && selectedStudentForPayment && (
+      {showAddPaymentModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-100 p-6">
-              <h3 className="font-extrabold text-lg text-slate-800 font-display">Registrar Recaudo</h3>
-              <p className="text-sm text-slate-500">Estudiante: <span className="font-bold text-[#fc7609]">{selectedStudentForPayment.nombres} {selectedStudentForPayment.apellidos}</span></p>
-            </div>
-            <form onSubmit={handleRegisterPayment} className="p-6 space-y-4">
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a pagar ($)</label><input type="number" required value={newPayment.amount} onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({ ...newPayment, period_covered: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newPayment.payment_date} onChange={e => setNewPayment({ ...newPayment, payment_date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-              <div className="flex justify-end gap-2 pt-4">
-                <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-[#fc7609] rounded-lg">Guardar Pago</button>
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-slate-50 border-b border-slate-100 p-6 shrink-0">
+              <div className="flex justify-between items-center">
+                <h3 className="font-extrabold text-lg text-slate-800 font-display">Registrar Recaudo</h3>
+                <button onClick={() => setShowAddPaymentModal(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
-            </form>
+              {selectedStudentForPayment ? (
+                <div className="flex justify-between items-center mt-2 bg-orange-50 p-3 rounded-xl border border-orange-100">
+                  <p className="text-sm text-slate-600">Estudiante: <span className="font-bold text-[#fc7609]">{selectedStudentForPayment.nombres} {selectedStudentForPayment.apellidos}</span></p>
+                  <button onClick={() => setSelectedStudentForPayment(null)} className="text-xs font-bold text-blue-500 hover:text-blue-600 underline">Cambiar</button>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 mt-1">Busca y selecciona un estudiante</p>
+              )}
+            </div>
+            
+            <div className="overflow-y-auto p-6">
+              {!selectedStudentForPayment ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar por documento o nombre..." 
+                      value={modalStudentSearch}
+                      onChange={e => setModalStudentSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#fc7609]/20"
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {dbStudents.filter(s => s.nombres.toLowerCase().includes(modalStudentSearch.toLowerCase()) || s.apellidos.toLowerCase().includes(modalStudentSearch.toLowerCase()) || s.documento_identidad.includes(modalStudentSearch)).slice(0, 20).map(s => (
+                      <button 
+                        key={s.id} 
+                        onClick={() => setSelectedStudentForPayment(s)}
+                        className="w-full text-left p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-colors flex justify-between items-center"
+                      >
+                        <div>
+                          <p className="font-bold text-slate-700 text-sm">{s.nombres} {s.apellidos}</p>
+                          <p className="text-xs text-slate-500 font-mono">{s.documento_identidad}</p>
+                        </div>
+                        <span className={`px-2 py-1 text-[9px] rounded font-bold uppercase ${s.status === StudentStatus.ACTIVE ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                          {s.status}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleRegisterPayment} className="space-y-4">
+                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a pagar ($)</label><input type="number" required value={newPayment.amount} onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({ ...newPayment, period_covered: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newPayment.payment_date} onChange={e => setNewPayment({ ...newPayment, payment_date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                    <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-[#fc7609] rounded-lg">Guardar Pago</button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}

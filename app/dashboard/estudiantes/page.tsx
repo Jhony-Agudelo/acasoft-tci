@@ -109,6 +109,10 @@ export default function EstudiantesPage() {
     const matchesSearch = student.nombres.toLowerCase().includes(studentSearch.toLowerCase()) || student.apellidos.toLowerCase().includes(studentSearch.toLowerCase()) || student.documento_identidad.includes(studentSearch);
     const matchesStatus = studentFilterStatus === 'TODOS' || student.status === studentFilterStatus;
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    const nameA = `${a.nombres} ${a.apellidos}`.toLowerCase();
+    const nameB = `${b.nombres} ${b.apellidos}`.toLowerCase();
+    return nameA.localeCompare(nameB);
   });
 
   if (loading) return <div className="p-10 text-center font-bold text-slate-500">Cargando datos...</div>;
@@ -160,6 +164,12 @@ export default function EstudiantesPage() {
 
       {/* Student List */}
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="font-bold text-slate-600 text-sm">Lista de Estudiantes</h3>
+          <span className="bg-orange-100 text-[#fc7609] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+            Total: {filteredStudents.length} {filteredStudents.length === 1 ? 'Estudiante' : 'Estudiantes'}
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">

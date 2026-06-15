@@ -122,6 +122,14 @@ export interface Expense {
   teacher_id?: string | null;
 }
 
+export interface TrackingVideo {
+  id: string;
+  student_id: string;
+  title: string;
+  video_url: string;
+  created_at?: string | Date;
+}
+
 export interface LessonPlanResource {
   title: string;
   url: string;
