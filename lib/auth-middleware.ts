@@ -28,7 +28,7 @@ export function validateUserStatus(user: User): { eligible: boolean; error?: str
  */
 export function authorizeRole(user: User, allowedRoles: UserRole[]): boolean {
   if (!user || user.status !== UserStatus.ACTIVE) return false;
-  return allowedRoles.includes(user.role);
+  return allowedRoles.includes(user.role as UserRole);
 }
 
 /**

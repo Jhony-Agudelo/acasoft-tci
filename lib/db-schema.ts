@@ -26,16 +26,16 @@ export interface User {
   id: string; // e.g. "usr_1"
   email: string;
   password_hash: string;
-  role: UserRole;
-  status: UserStatus;
+  role: UserRole | string;
+  status: UserStatus | string;
   nombres: string;
   apellidos: string;
-  telefono?: string;
-  documento_identidad?: string;
-  fecha_nacimiento?: string;
-  direccion?: string;
-  contacto_emergencia?: string;
-  parentesco_contacto?: string;
+  telefono?: string | null;
+  documento_identidad?: string | null;
+  fecha_nacimiento?: string | null;
+  direccion?: string | null;
+  contacto_emergencia?: string | null;
+  parentesco_contacto?: string | null;
   avatar_url?: string | null;
 }
 
@@ -52,14 +52,14 @@ export interface Student {
   documento_identidad: string; // Unique
   nombres: string;
   apellidos: string;
-  fecha_nacimiento?: string;
+  fecha_nacimiento?: string | null;
   edad: number;
   colegio_origen: string; // From the predefined list of La Virginia, Risaralda
-  grado_escolar?: string;
+  grado_escolar?: string | null;
   curso_actual: string;
-  jornada_escolar: SchoolDayPeriod;
+  jornada_escolar: SchoolDayPeriod | string;
   guardian_id: string; // Reference to Guardian
-  status: StudentStatus;
+  status: StudentStatus | string;
   payment_deadline_date: string; // YYYY-MM-DD
   payment_day: number;
   course_id?: string | null; // Foreign Key to Course (Nullable / Optional)

@@ -120,7 +120,7 @@ export function EditStudentModal({ student, guardian, onClose, onSave }: EditMod
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha Nacimiento</label>
-              <input type="date" value={formData.fecha_nacimiento} onChange={e => setFormData({...formData, fecha_nacimiento: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" />
+              <input type="date" value={formData.fecha_nacimiento || ''} onChange={e => setFormData({...formData, fecha_nacimiento: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">URL Avatar (Opcional)</label>
