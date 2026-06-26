@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Course, User, Student, StudentStatus, LessonPlan, LessonPlanResource } from '@/lib/db-schema';
-import { X, Save, Clock, Trash2, Plus, Users, Book, Video, FileText, Activity, ExternalLink } from 'lucide-react';
+import { X, Save, Clock, Trash2, Plus, Users, Book, Video, FileText, Activity, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveLessonPlan, deleteLessonPlan, getLessonPlansByCourse, getLessonPlanTemplates } from '@/lib/actions/lesson_plan.actions';
 
@@ -41,6 +41,7 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
   const [loadingLessons, setLoadingLessons] = useState(true);
   
   const [loading, setLoading] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
 
   React.useEffect(() => {
     getLessonPlansByCourse(course.id).then(plans => {
@@ -249,6 +250,18 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
               <div className="flex items-center gap-2"><Users className="h-4 w-4 text-[#fc7609]" /> Estudiantes Inscritos</div>
               {isTeacher && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-lg">Modo Asistencia</span>}
             </h4>
+            
+            <div className="mb-3 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar estudiante por nombre o documento..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#fc7609]/20 focus:border-[#fc7609] transition-all bg-slate-50 focus:bg-white"
+              />
+            </div>
+
             <div className="bg-slate-50 border border-slate-200 rounded-xl max-h-64 overflow-y-auto p-4 space-y-2">
               {students.filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED').length === 0 ? (
                 <p className="text-xs text-slate-500 text-center">No hay estudiantes activos en el sistema.</p>
@@ -256,6 +269,7 @@ export function EditCourseModal({ course, teachers, students, currentUser, onClo
                 students
                   .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED')
                   .filter(s => isTeacher ? assignedStudentIds.has(s.id) : true) // Teachers only see assigned students
+                  .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(studentSearch.toLowerCase()) || s.documento_identidad.includes(studentSearch))
                   .map(student => (
                   <label key={student.id} className={`flex items-center justify-between p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200 ${student.status === 'BLOCKED' ? 'opacity-70 bg-rose-50/40' : ''}`}>
                     <div className="flex items-center gap-3">
