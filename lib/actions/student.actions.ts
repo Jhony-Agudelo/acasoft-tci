@@ -36,6 +36,19 @@ export async function getStudents(): Promise<Student[]> {
   }
 }
 
+export async function getStudentById(id: string): Promise<Student | null> {
+  try {
+    const student = await prisma.students.findUnique({
+      where: { id },
+    });
+    if (!student) return null;
+    return mapStudent(student);
+  } catch (error) {
+    console.error('Error fetching student by id:', error);
+    return null;
+  }
+}
+
 export async function saveStudent(student: Student): Promise<boolean> {
   try {
     await prisma.students.upsert({

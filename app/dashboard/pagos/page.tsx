@@ -105,41 +105,49 @@ export default function PagosPage() {
   };
 
   const handleShareWhatsApp = async () => {
-    if (!currentReceiptData || !receiptRef.current) return;
+    if (!currentReceiptData) return;
     setIsSubmitting(true);
-    toast.info('Generando factura en alta calidad...');
+    
     try {
-      const canvas = await html2canvas(receiptRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        onclone: (clonedDoc) => {
-          const allElements = clonedDoc.querySelectorAll('*');
-          Array.from(allElements).forEach((el: any) => {
-            const computed = clonedDoc.defaultView?.getComputedStyle(el);
-            if (!computed) return;
-            ['borderColor', 'backgroundColor', 'color', 'textDecorationColor', 'outlineColor', 'borderBottomColor', 'borderTopColor', 'borderLeftColor', 'borderRightColor'].forEach(prop => {
-              if (computed[prop as any] && computed[prop as any].includes('oklch')) {
-                el.style[prop] = prop === 'color' ? '#000000' : 'transparent';
-              }
-            });
-          });
+      const paymentId = currentReceiptData.payment.id;
+      const studentName = `${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}`;
+      const amount = currentReceiptData.payment.amount.toLocaleString('es-CO');
+      
+      // Buscar el teléfono del acudiente
+      const guardian = dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id);
+      let phoneParam = '';
+      
+      if (guardian && guardian.telefono) {
+        // Limpiar el número de teléfono (quitar espacios, guiones, etc.)
+        const cleanPhone = guardian.telefono.replace(/\D/g, '');
+        // Asumiendo Colombia si tiene 10 dígitos y empieza por 3
+        if (cleanPhone.length === 10 && cleanPhone.startsWith('3')) {
+          phoneParam = `57${cleanPhone}`;
+        } else {
+          phoneParam = cleanPhone;
         }
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdfWidth = canvas.width / 2;
-      const pdfHeight = canvas.height / 2;
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [pdfWidth, pdfHeight] });
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Factura_TCI_${currentReceiptData.payment.id.split('_')[1]}.pdf`);
+      }
+      
+      const baseUrl = window.location.origin;
+      const receiptLink = `${baseUrl}/recibo/${paymentId}`;
+      
+      const text = `¡Hola! Confirmamos el registro de tu pago por valor de $${amount} para el estudiante ${studentName}. 
+      
+Puedes visualizar y descargar tu comprobante oficial (PDF) en el siguiente enlace:
+${receiptLink}
 
-      const text = `¡Hola! Confirmamos el recibo de pago por valor de $${currentReceiptData.payment.amount.toLocaleString('es-CO')} para el estudiante ${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}. Puedes descargar el comprobante adjunto en la plataforma. Gracias por confiar en Taller Creativo de Inglés.`;
-      const waLink = `https://wa.me/?text=${encodeURIComponent(text)}`;
+¡Gracias por confiar en Taller Creativo de Inglés!`;
+
+      // Si hay teléfono válido, usa el endpoint con el teléfono, sino el genérico
+      const waLink = phoneParam 
+        ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(text)}`;
+        
       window.open(waLink, '_blank');
-      toast.success('Factura generada exitosamente. Se ha abierto WhatsApp.');
+      toast.success('Se ha abierto WhatsApp con el recibo.');
     } catch (error: any) {
-      console.error("PDF Error:", error);
-      toast.error('Error generando la factura: ' + (error?.message || String(error)));
+      console.error("WhatsApp Link Error:", error);
+      toast.error('Error generando enlace: ' + (error?.message || String(error)));
     } finally {
       setIsSubmitting(false);
     }

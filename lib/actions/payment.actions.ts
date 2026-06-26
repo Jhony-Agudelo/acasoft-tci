@@ -24,6 +24,19 @@ export async function getPayments(): Promise<Payment[]> {
     return [];
   }
 }
+  
+export async function getPaymentById(id: string): Promise<Payment | null> {
+  try {
+    const payment = await prisma.payments.findUnique({
+      where: { id },
+    });
+    if (!payment) return null;
+    return mapPayment(payment);
+  } catch (error) {
+    console.error('Error fetching payment by id:', error);
+    return null;
+  }
+}
 
 export async function savePayment(payment: Payment): Promise<boolean> {
   try {

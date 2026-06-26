@@ -24,6 +24,19 @@ export async function getGuardians(): Promise<Guardian[]> {
     return [];
   }
 }
+  
+export async function getGuardianById(id: string): Promise<Guardian | null> {
+  try {
+    const guardian = await prisma.guardians.findUnique({
+      where: { id },
+    });
+    if (!guardian) return null;
+    return mapGuardian(guardian);
+  } catch (error) {
+    console.error('Error fetching guardian by id:', error);
+    return null;
+  }
+}
 
 export async function saveGuardian(guardian: Guardian): Promise<boolean> {
   try {

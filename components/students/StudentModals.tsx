@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Student, Guardian, Course, StudentStatus } from '@/lib/db-schema';
+import { Student, Guardian, Course, StudentStatus, COLEGIOS_LA_VIRGINIA } from '@/lib/db-schema';
 import { X, User, Save, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -128,11 +128,32 @@ export function EditStudentModal({ student, guardian, onClose, onSave }: EditMod
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Colegio Origen</label>
-              <input type="text" value={formData.colegio_origen || ''} onChange={e => setFormData({...formData, colegio_origen: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" />
+              <select value={formData.colegio_origen || ''} onChange={e => setFormData({...formData, colegio_origen: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+                <option value="">Seleccione...</option>
+                {COLEGIOS_LA_VIRGINIA.map(col => <option key={col} value={col}>{col}</option>)}
+                <option value="Otro">Otro / Fuera del Municipio</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Grado Escolar</label>
-              <input type="text" value={formData.grado_escolar || ''} onChange={e => setFormData({...formData, grado_escolar: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" />
+              <select value={formData.grado_escolar || ''} onChange={e => setFormData({...formData, grado_escolar: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+                <option value="">Seleccione...</option>
+                <option value="Jardín / Guardería">Jardín / Guardería</option>
+                <option value="Preescolar / Transición">Preescolar / Transición</option>
+                <option value="Primero">Primero</option>
+                <option value="Segundo">Segundo</option>
+                <option value="Tercero">Tercero</option>
+                <option value="Cuarto">Cuarto</option>
+                <option value="Quinto">Quinto</option>
+                <option value="Sexto">Sexto</option>
+                <option value="Séptimo">Séptimo</option>
+                <option value="Octavo">Octavo</option>
+                <option value="Noveno">Noveno</option>
+                <option value="Décimo">Décimo</option>
+                <option value="Once">Once</option>
+                <option value="Egresado / Universitario">Egresado / Universitario</option>
+                <option value="No Aplica">No Aplica</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado</label>
@@ -181,7 +202,14 @@ export function EditStudentModal({ student, guardian, onClose, onSave }: EditMod
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Parentesco</label>
-                  <input type="text" value={guardianData.parentesco} onChange={e => setGuardianData({...guardianData, parentesco: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" />
+                  <select value={guardianData.parentesco} onChange={e => setGuardianData({...guardianData, parentesco: e.target.value})} className="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium">
+                    <option value="">Seleccione...</option>
+                    <option value="Madre">Madre</option>
+                    <option value="Padre">Padre</option>
+                    <option value="Abuelo/a">Abuelo/a</option>
+                    <option value="Tío/a">Tío/a</option>
+                    <option value="Otro">Otro</option>
+                  </select>
                 </div>
               </div>
             </div>
