@@ -36,8 +36,7 @@ export default function DashboardHome() {
           setTeacherCourses(courses.filter(c => 
             c.schedule?.some(s => 
               s.main_teacher_id === authData.user.id || 
-              s.support_teacher_1_id === authData.user.id || 
-              s.support_teacher_2_id === authData.user.id
+              (s.support_teachers && s.support_teachers.includes(authData.user.id))
             )
           ));
         } else {
@@ -45,8 +44,7 @@ export default function DashboardHome() {
           setTeacherCourses(courses.filter(c => 
             c.schedule?.some(s => 
               s.main_teacher_id === authData.user.id || 
-              s.support_teacher_1_id === authData.user.id || 
-              s.support_teacher_2_id === authData.user.id
+              (s.support_teachers && s.support_teachers.includes(authData.user.id))
             )
           ));
         }
@@ -74,7 +72,7 @@ export default function DashboardHome() {
   teacherCourses.forEach(c => {
     c.schedule?.forEach(s => {
       // Check if this specific user is assigned to THIS specific block
-      if (s.main_teacher_id === currentUser?.id || s.support_teacher_1_id === currentUser?.id || s.support_teacher_2_id === currentUser?.id) {
+      if (s.main_teacher_id === currentUser?.id || (s.support_teachers && currentUser && s.support_teachers.includes(currentUser.id))) {
         if (s.day.toLowerCase() === todayCapitalized.toLowerCase() || 
             (s.day === 'Miercoles' && todayCapitalized === 'Miércoles') ||
             (s.day === 'Miércoles' && todayCapitalized === 'Miercoles') ||

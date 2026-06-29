@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Course, User, Student, StudentStatus, LessonPlan, LessonPlanResource, Guardian } from '@/lib/db-schema';
-import { X, Save, Clock, Trash2, Plus, Users, Book, Video, FileText, Activity, ExternalLink, Search, Phone } from 'lucide-react';
+import { X, Save, Clock, Trash2, Plus, Users, Book, Video, FileText, Activity, ExternalLink, Search, Phone, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveLessonPlan, deleteLessonPlan, getLessonPlansByCourse, getLessonPlanTemplates } from '@/lib/actions/lesson_plan.actions';
 
@@ -44,6 +44,8 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
 
   const [loading, setLoading] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [addStudentSearch, setAddStudentSearch] = useState('');
 
   React.useEffect(() => {
     getLessonPlansByCourse(course.id).then(plans => {
@@ -295,16 +297,27 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
               </div>
 
               <div className="border-t border-slate-100 pt-6">
-                <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2"><Users className="h-4 w-4 text-[#fc7609]" /> Estudiantes Inscritos</div>
-                  {isTeacher && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-lg">Modo Asistencia</span>}
-                </h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <Users className="h-4 w-4 text-[#fc7609]" /> Estudiantes Inscritos
+                    {isTeacher && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-lg normal-case tracking-normal">Modo Asistencia</span>}
+                  </h4>
+                  {!isTeacher && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddStudentModal(true)}
+                      className="text-xs font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors border border-emerald-100"
+                    >
+                      <UserPlus className="h-4 w-4" /> Buscar y Agregar Estudiante
+                    </button>
+                  )}
+                </div>
 
                 <div className="mb-3 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Buscar estudiante por nombre o documento..."
+                    placeholder="Buscar entre los estudiantes inscritos..."
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#fc7609]/20 focus:border-[#fc7609] transition-all bg-slate-50 focus:bg-white"
@@ -312,27 +325,18 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
                 </div>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-xl max-h-64 overflow-y-auto p-4 space-y-2">
-                  {students.filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED').length === 0 ? (
-                    <p className="text-xs text-slate-500 text-center">No hay estudiantes activos en el sistema.</p>
+                  {students.filter(s => assignedStudentIds.has(s.id)).length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center">No hay estudiantes inscritos en este curso.</p>
                   ) : (
                     students
-                      .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED')
-                      .filter(s => isTeacher ? assignedStudentIds.has(s.id) : true) // Teachers only see assigned students
+                      .filter(s => assignedStudentIds.has(s.id))
                       .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(studentSearch.toLowerCase()) || s.documento_identidad.includes(studentSearch))
                       .map(student => (
-                        <label key={student.id} className={`flex items-center justify-between p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200 ${student.status === 'BLOCKED' ? 'opacity-70 bg-rose-50/40' : ''}`}>
+                        <div key={student.id} className={`flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200 ${student.status === 'BLOCKED' ? 'opacity-70 bg-rose-50/40' : ''}`}>
                           <div className="flex items-center gap-3">
-                            {!isTeacher && (
-                              <input
-                                type="checkbox"
-                                checked={assignedStudentIds.has(student.id)}
-                                onChange={() => toggleStudent(student.id)}
-                                className="w-4 h-4 text-orange-500 rounded border-slate-300 focus:ring-orange-500"
-                              />
-                            )}
                             <div className="flex flex-col">
                               <span className="text-sm font-bold text-slate-700">{student.nombres} {student.apellidos}</span>
-                              <span className="text-[10px] font-mono text-slate-400">ID: {student.documento_identidad} | {student.curso_actual && student.curso_actual !== course.id ? `Asignado a otro curso (${student.curso_actual})` : 'Inscrito'}</span>
+                              <span className="text-[10px] font-mono text-slate-400">ID: {student.documento_identidad}</span>
 
                               {(isTeacher || isDirector) && (
                                 <div className="mt-1 flex items-center gap-1.5 text-[10px] text-rose-600 bg-rose-50 px-2 py-1 rounded-md w-fit border border-rose-100">
@@ -345,24 +349,35 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
                               )}
                             </div>
                           </div>
-                          {isTeacher && (
-                            <div className="flex gap-2 items-center">
-                              {student.status === 'BLOCKED' && (
-                                <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md uppercase">Mora</span>
-                              )}
-                              <select
-                                className="text-xs border border-slate-200 p-1.5 rounded-lg bg-white focus:ring-orange-500 disabled:opacity-50"
-                                value={attendanceData[student.id] || 'PRESENT'}
-                                onChange={e => setAttendanceData({ ...attendanceData, [student.id]: e.target.value })}
-                                disabled={student.status === 'BLOCKED'}
+                          <div className="flex gap-2 items-center">
+                            {isTeacher ? (
+                              <>
+                                {student.status === 'BLOCKED' && (
+                                  <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md uppercase">Mora</span>
+                                )}
+                                <select
+                                  className="text-xs border border-slate-200 p-1.5 rounded-lg bg-white focus:ring-orange-500 disabled:opacity-50"
+                                  value={attendanceData[student.id] || 'PRESENT'}
+                                  onChange={e => setAttendanceData({ ...attendanceData, [student.id]: e.target.value })}
+                                  disabled={student.status === 'BLOCKED'}
+                                >
+                                  <option value="PRESENT">Presente</option>
+                                  <option value="ABSENT">Ausente</option>
+                                  <option value="EXCUSED">Excusado</option>
+                                </select>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => toggleStudent(student.id)}
+                                className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Eliminar del curso"
                               >
-                                <option value="PRESENT">Presente</option>
-                                <option value="ABSENT">Ausente</option>
-                                <option value="EXCUSED">Excusado</option>
-                              </select>
-                            </div>
-                          )}
-                        </label>
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       ))
                   )}
                 </div>
@@ -389,6 +404,71 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
           )}
         </div>
       </div>
+
+      {/* MODAL DE BÚSQUEDA Y AGREGADO DE ESTUDIANTES */}
+      {showAddStudentModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center">
+              <h3 className="font-extrabold text-lg text-slate-800 flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-emerald-500" /> Agregar Estudiante
+              </h3>
+              <button onClick={() => { setShowAddStudentModal(false); setAddStudentSearch(''); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o documento..."
+                  autoFocus
+                  value={addStudentSearch}
+                  onChange={(e) => setAddStudentSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700"
+                />
+              </div>
+
+              <div className="max-h-72 overflow-y-auto space-y-2">
+                {students
+                  .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED') // Solo activos o mora
+                  .filter(s => !assignedStudentIds.has(s.id)) // Solo los que NO están ya en el curso
+                  .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(addStudentSearch.toLowerCase()) || s.documento_identidad.includes(addStudentSearch))
+                  .length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center italic py-4">No se encontraron estudiantes para agregar.</p>
+                  ) : (
+                    students
+                      .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED')
+                      .filter(s => !assignedStudentIds.has(s.id))
+                      .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(addStudentSearch.toLowerCase()) || s.documento_identidad.includes(addStudentSearch))
+                      .slice(0, 50) // Limit to 50 to avoid performance issues
+                      .map(student => (
+                        <div key={student.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                          <div>
+                            <p className="font-bold text-sm text-slate-700">{student.nombres} {student.apellidos}</p>
+                            <p className="text-[10px] text-slate-500">ID: {student.documento_identidad}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleStudent(student.id); // Add to course
+                              setShowAddStudentModal(false); // Close modal automatically
+                              setAddStudentSearch(''); // Reset search
+                              toast.success('Estudiante agregado al curso');
+                            }}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+                          >
+                            Agregar
+                          </button>
+                        </div>
+                      ))
+                  )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
