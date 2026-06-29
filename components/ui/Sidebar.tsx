@@ -54,9 +54,9 @@ export function Sidebar({
           </Link>
           {isTeacher ? (
             <Link
-              href="/dashboard/cursos"
+              href="/dashboard/mis-grupos"
               className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
-                ${pathname.includes('/cursos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                ${pathname.includes('/mis-grupos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               <BookOpen className="h-4 w-4 shrink-0" />
               <span>Mis Grupos</span>
@@ -82,6 +82,15 @@ export function Sidebar({
                   <span>Maestros (Usuarios)</span>
                 </Link>
               )}
+
+              <Link
+                href="/dashboard/mis-grupos"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
+                  ${pathname.includes('/mis-grupos') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span>Mis Grupos</span>
+              </Link>
 
               <Link
                 href="/dashboard/cursos"

@@ -4,11 +4,28 @@ import { prisma } from '../prisma';
 import { Course } from '../db-schema';
 
 function mapCourse(prismaCourse: any): Course {
+  let schedule = typeof prismaCourse.schedule === 'string' ? JSON.parse(prismaCourse.schedule) : (prismaCourse.schedule || []);
+  
+  schedule = schedule.map((s: any) => {
+    if (s.support_teacher_1_id !== undefined || s.support_teacher_2_id !== undefined) {
+      const support_teachers = [];
+      if (s.support_teacher_1_id) support_teachers.push(s.support_teacher_1_id);
+      if (s.support_teacher_2_id) support_teachers.push(s.support_teacher_2_id);
+      
+      const newS = { ...s, support_teachers };
+      delete newS.support_teacher_1_id;
+      delete newS.support_teacher_2_id;
+      return newS;
+    }
+    if (!s.support_teachers) s.support_teachers = [];
+    return s;
+  });
+
   return {
     id: prismaCourse.id,
     nombre_curso: prismaCourse.nombre_curso,
     status: prismaCourse.status as 'ACTIVE' | 'INACTIVE',
-    schedule: typeof prismaCourse.schedule === 'string' ? JSON.parse(prismaCourse.schedule) : (prismaCourse.schedule || []),
+    schedule: schedule,
   };
 }
 

@@ -71,8 +71,7 @@ export interface CourseScheduleItem {
   start_time: string;
   end_time: string;
   main_teacher_id: string; // Reference to User
-  support_teacher_1_id?: string; // Optional reference
-  support_teacher_2_id?: string; // Optional reference
+  support_teachers?: string[]; // Array of reference IDs
 }
 
 export interface Course {

@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, Search, BookOpen, Clock, Users, ArrowRight, X } from 'lucide-react';
-import { Course, User, UserRole, UserStatus, Student, Attendance, AttendanceStatus } from '@/lib/db-schema';
+import { Course, User, UserRole, UserStatus, Student, Attendance, AttendanceStatus, Guardian } from '@/lib/db-schema';
 import { getCourses, saveCourse } from '@/lib/actions/course.actions';
 import { getUsers } from '@/lib/actions/user.actions';
 import { getStudents, saveStudent } from '@/lib/actions/student.actions';
+import { getGuardians } from '@/lib/actions/guardian.actions';
 import { saveAttendances } from '@/lib/actions/attendance.actions';
 import { toast } from 'sonner';
 import { EditCourseModal } from '@/components/courses/CourseModals';
@@ -24,6 +25,7 @@ export default function CursosPage() {
   const [dbCourses, setDbCourses] = useState<Course[]>([]);
   const [dbUsers, setDbUsers] = useState<User[]>([]);
   const [dbStudents, setDbStudents] = useState<Student[]>([]);
+  const [dbGuardians, setDbGuardians] = useState<Guardian[]>([]);
   const [loading, setLoading] = useState(true);
   const [courseSearch, setCourseSearch] = useState('');
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
@@ -33,8 +35,8 @@ export default function CursosPage() {
   const [newCourseForm, setNewCourseForm] = useState({
     nombre_curso: '',
   });
-  const [newCourseSchedule, setNewCourseSchedule] = useState<Array<{ day: string; start_time: string; end_time: string; main_teacher_id: string }>>([
-    { day: 'Lunes', start_time: '14:00', end_time: '16:00', main_teacher_id: '' }
+  const [newCourseSchedule, setNewCourseSchedule] = useState<Array<{ day: string; start_time: string; end_time: string; main_teacher_id: string; support_teachers: string[] }>>([
+    { day: 'Lunes', start_time: '14:00', end_time: '16:00', main_teacher_id: '', support_teachers: [] }
   ]);
 
   useEffect(() => {
@@ -48,31 +50,21 @@ export default function CursosPage() {
       fetch('/api/auth/me').then(res => res.json()),
       getCourses(), 
       getUsers(), 
-      getStudents()
-    ]).then(([authData, courses, users, students]) => {
+      getStudents(),
+      getGuardians()
+    ]).then(([authData, courses, users, students, guardians]) => {
       if (authData.success && authData.user) {
         setCurrentUser(authData.user);
-        if (authData.user.role === 'TEACHER') {
-          setDbCourses(courses.filter(c => 
-            c.schedule?.some(s => 
-              s.main_teacher_id === authData.user!.id || 
-              s.support_teacher_1_id === authData.user!.id || 
-              s.support_teacher_2_id === authData.user!.id
-            )
-          ));
-        } else {
-          setDbCourses(courses);
-        }
-      } else {
-        setDbCourses(courses);
       }
+      setDbCourses(courses);
       setDbUsers(users);
       setDbStudents(students);
+      setDbGuardians(guardians);
       setLoading(false);
     });
   }, []);
 
-  const isTeacher = currentUser?.role === 'TEACHER';
+  const isTeacherMode = false;
 
   const handleRegisterCourse = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +93,7 @@ export default function CursosPage() {
       setDbCourses([...dbCourses, data.course]);
       setShowAddCourseModal(false);
       setNewCourseForm({ nombre_curso: '' });
-      setNewCourseSchedule([{ day: 'Lunes', start_time: '14:00', end_time: '16:00', main_teacher_id: '' }]);
+      setNewCourseSchedule([{ day: 'Lunes', start_time: '14:00', end_time: '16:00', main_teacher_id: '', support_teachers: [] }]);
       toast.success(`¡Curso registrado de manera exitosa!`);
     } catch {
       toast.error('Error al enviar la solicitud de creación de curso.');
@@ -152,18 +144,16 @@ export default function CursosPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-800 font-display">{isTeacher ? 'Mis Grupos' : 'Gestión de Cursos'}</h2>
-          <p className="text-slate-500 text-sm mt-1">{isTeacher ? 'Visualiza y toma asistencia de tus estudiantes.' : 'Administre los grupos, horarios y maestros asignados.'}</p>
+          <h2 className="text-2xl font-extrabold text-slate-800 font-display">Gestión de Cursos</h2>
+          <p className="text-slate-500 text-sm mt-1">Administre los grupos, horarios y maestros asignados.</p>
         </div>
-        {!isTeacher && (
-          <button 
-            onClick={() => setShowAddCourseModal(true)}
-            className="bg-[#fc7609] hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95"
-          >
-            <PlusCircle className="h-5 w-5" />
-            Registrar Nuevo Curso
-          </button>
-        )}
+        <button 
+          onClick={() => setShowAddCourseModal(true)}
+          className="bg-[#fc7609] hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95"
+        >
+          <PlusCircle className="h-5 w-5" />
+          Registrar Nuevo Curso
+        </button>
       </div>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
@@ -231,17 +221,9 @@ export default function CursosPage() {
                 </div>
 
                 <div className="bg-slate-50 border-t border-slate-100 p-3 flex gap-2">
-                  {isTeacher ? (
-                    <button onClick={() => setEditCourse(course)} className="flex-1 bg-white hover:bg-orange-50 border border-slate-200 text-slate-700 hover:text-[#fc7609] py-2 rounded-lg text-xs font-bold transition-colors flex justify-center items-center gap-1.5">
-                      Ver y Tomar Asistencia <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  ) : (
-                    <>
-                      <button onClick={() => setEditCourse(course)} className="flex-1 bg-white hover:bg-orange-50 border border-slate-200 text-slate-700 hover:text-[#fc7609] py-2 rounded-lg text-xs font-bold transition-colors flex justify-center items-center gap-1.5">
-                        Gestionar <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
-                    </>
-                  )}
+                  <button onClick={() => setEditCourse(course)} className="flex-1 bg-white hover:bg-orange-50 border border-slate-200 text-slate-700 hover:text-[#fc7609] py-2 rounded-lg text-xs font-bold transition-colors flex justify-center items-center gap-1.5">
+                    Gestionar <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             );
@@ -254,7 +236,9 @@ export default function CursosPage() {
           course={editCourse} 
           teachers={dbUsers.filter(u => u.role === UserRole.TEACHER || u.role === UserRole.DIRECTOR)} 
           students={dbStudents}
+          guardians={dbGuardians}
           currentUser={currentUser}
+          isTeacherMode={false}
           onClose={() => setEditCourse(null)} 
           onSave={handleUpdateCourse} 
           onSaveStudent={handleUpdateStudent}

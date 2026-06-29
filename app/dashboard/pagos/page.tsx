@@ -33,7 +33,7 @@ export default function PagosPage() {
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
   const [modalStudentSearch, setModalStudentSearch] = useState('');
-  const [newPayment, setNewPayment] = useState({ amount: '150000', period_covered: 'Mensualidad', payment_date: new Date().toISOString().split('T')[0] });
+  const [newPayment, setNewPayment] = useState({ amount: '70000', period_covered: 'Mensualidad', payment_date: new Date().toISOString().split('T')[0] });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // States for Egresos
@@ -107,16 +107,16 @@ export default function PagosPage() {
   const handleShareWhatsApp = async () => {
     if (!currentReceiptData) return;
     setIsSubmitting(true);
-    
+
     try {
       const paymentId = currentReceiptData.payment.id;
       const studentName = `${currentReceiptData.student.nombres} ${currentReceiptData.student.apellidos}`;
       const amount = currentReceiptData.payment.amount.toLocaleString('es-CO');
-      
+
       // Buscar el teléfono del acudiente
       const guardian = dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id);
       let phoneParam = '';
-      
+
       if (guardian && guardian.telefono) {
         // Limpiar el número de teléfono (quitar espacios, guiones, etc.)
         const cleanPhone = guardian.telefono.replace(/\D/g, '');
@@ -127,10 +127,10 @@ export default function PagosPage() {
           phoneParam = cleanPhone;
         }
       }
-      
+
       const baseUrl = window.location.origin;
       const receiptLink = `${baseUrl}/recibo/${paymentId}`;
-      
+
       const text = `¡Hola! Confirmamos el registro de tu pago por valor de $${amount} para el estudiante ${studentName}. 
       
 Puedes visualizar y descargar tu comprobante oficial (PDF) en el siguiente enlace:
@@ -139,10 +139,10 @@ ${receiptLink}
 ¡Gracias por confiar en Taller Creativo de Inglés!`;
 
       // Si hay teléfono válido, usa el endpoint con el teléfono, sino el genérico
-      const waLink = phoneParam 
+      const waLink = phoneParam
         ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(text)}`
         : `https://wa.me/?text=${encodeURIComponent(text)}`;
-        
+
       window.open(waLink, '_blank');
       toast.success('Se ha abierto WhatsApp con el recibo.');
     } catch (error: any) {
@@ -204,7 +204,7 @@ ${receiptLink}
     const student = dbStudents.find(s => s.id === p.student_id);
     const searchLower = paymentSearch.toLowerCase();
     const matchesSearch = student?.nombres.toLowerCase().includes(searchLower) || student?.documento_identidad.includes(searchLower);
-    
+
     const invoiceLower = invoiceSearch.toLowerCase().replace('n°', '').trim();
     const displayId = p.id.split('_')[1] || '';
     const matchesInvoice = displayId.toLowerCase().includes(invoiceLower) || p.id.toLowerCase().includes(invoiceLower);
@@ -288,8 +288,8 @@ ${receiptLink}
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input type="text" placeholder="Buscar estudiante..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm" />
                 </div>
-                <button 
-                  onClick={() => { setSelectedStudentForPayment(null); setModalStudentSearch(''); setShowAddPaymentModal(true); }} 
+                <button
+                  onClick={() => { setSelectedStudentForPayment(null); setModalStudentSearch(''); setShowAddPaymentModal(true); }}
                   className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm whitespace-nowrap transition-colors flex items-center gap-2"
                 >
                   <PlusCircle className="h-4 w-4" /> Agregar Pago
@@ -335,12 +335,12 @@ ${receiptLink}
               <h3 className="font-bold text-slate-600 text-sm">Historial de Pagos Recientes</h3>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Buscar por N° de Factura..." 
-                  value={invoiceSearch} 
-                  onChange={(e) => setInvoiceSearch(e.target.value)} 
-                  className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-orange-500/20" 
+                <input
+                  type="text"
+                  placeholder="Buscar por N° de Factura..."
+                  value={invoiceSearch}
+                  onChange={(e) => setInvoiceSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-orange-500/20"
                 />
               </div>
             </div>
@@ -468,15 +468,15 @@ ${receiptLink}
                 <p className="text-sm text-slate-500 mt-1">Busca y selecciona un estudiante</p>
               )}
             </div>
-            
+
             <div className="overflow-y-auto p-6">
               {!selectedStudentForPayment ? (
                 <div className="space-y-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Buscar por documento o nombre..." 
+                    <input
+                      type="text"
+                      placeholder="Buscar por documento o nombre..."
                       value={modalStudentSearch}
                       onChange={e => setModalStudentSearch(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#fc7609]/20"
@@ -484,8 +484,8 @@ ${receiptLink}
                   </div>
                   <div className="max-h-60 overflow-y-auto space-y-2">
                     {dbStudents.filter(s => s.nombres.toLowerCase().includes(modalStudentSearch.toLowerCase()) || s.apellidos.toLowerCase().includes(modalStudentSearch.toLowerCase()) || s.documento_identidad.includes(modalStudentSearch)).slice(0, 20).map(s => (
-                      <button 
-                        key={s.id} 
+                      <button
+                        key={s.id}
                         onClick={() => setSelectedStudentForPayment(s)}
                         className="w-full text-left p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-colors flex justify-between items-center"
                       >
