@@ -25,6 +25,7 @@ export async function saveExpense(expenseData: any) {
         description: expenseData.description,
         recipient_name: expenseData.recipient_name,
         teacher_id: expenseData.teacher_id,
+        payment_method: expenseData.payment_method || 'Efectivo',
       },
       create: {
         id: expenseData.id,
@@ -34,6 +35,7 @@ export async function saveExpense(expenseData: any) {
         description: expenseData.description,
         recipient_name: expenseData.recipient_name,
         teacher_id: expenseData.teacher_id,
+        payment_method: expenseData.payment_method || 'Efectivo',
       }
     });
     return expense;

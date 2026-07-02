@@ -121,6 +121,7 @@ export interface Expense {
   description: string;
   recipient_name?: string | null;
   teacher_id?: string | null;
+  payment_method?: string | null;
 }
 
 export interface TrackingVideo {
@@ -128,6 +129,16 @@ export interface TrackingVideo {
   student_id: string;
   title: string;
   video_url: string;
+  created_at?: string | Date;
+}
+
+export interface Transfer {
+  id: string;
+  amount: number;
+  date: string;
+  from_account: string;
+  to_account: string;
+  description: string;
   created_at?: string | Date;
 }
 

@@ -5,6 +5,7 @@ import { getGuardians, saveGuardian } from './actions/guardian.actions';
 import { getSettings, saveSettings } from './actions/settings.actions';
 import { getAttendances, saveAttendances } from './actions/attendance.actions';
 import { getPayments, savePayment } from './actions/payment.actions';
+import { getTransfers, saveTransfer } from './actions/transfer.actions';
 
 export function isPgConfigured() {
   return !!process.env.DATABASE_URL;
@@ -32,6 +33,9 @@ export const dbSaveAttendancesBatch = saveAttendances;
 
 export const dbGetPayments = getPayments;
 export const dbSavePayment = savePayment;
+
+export const dbGetTransfers = getTransfers;
+export const dbSaveTransfer = saveTransfer;
 
 export async function dbReset() {
   console.log("Resetting DB via API is not allowed in production.");

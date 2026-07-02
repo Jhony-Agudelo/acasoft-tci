@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Search, PlusCircle, Calendar, Printer, Share2, AlertTriangle, TrendingDown, TrendingUp, Users, X } from 'lucide-react';
-import { Payment, Student, Guardian, Expense, User, UserRole, StudentStatus } from '@/lib/db-schema';
+import { Payment, Student, Guardian, Expense, User, UserRole, StudentStatus, Transfer } from '@/lib/db-schema';
 import { getPayments, savePayment } from '@/lib/actions/payment.actions';
 import { getStudents, saveStudent } from '@/lib/actions/student.actions';
 import { getGuardians } from '@/lib/actions/guardian.actions';
 import { getExpenses, saveExpense } from '@/lib/actions/expense.actions';
 import { getUsers } from '@/lib/actions/user.actions';
+import { getTransfers, saveTransfer } from '@/lib/actions/transfer.actions';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -23,6 +24,7 @@ export default function PagosPage() {
   const [dbGuardians, setDbGuardians] = useState<Guardian[]>([]);
   const [dbExpenses, setDbExpenses] = useState<Expense[]>([]);
   const [dbUsers, setDbUsers] = useState<User[]>([]);
+  const [dbTransfers, setDbTransfers] = useState<Transfer[]>([]);
 
   // Month Filter
   const [selectedMonth, setSelectedMonth] = useState<string>('');
@@ -43,19 +45,24 @@ export default function PagosPage() {
   // States for Egresos
   const [expenseSearch, setExpenseSearch] = useState('');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [newExpense, setNewExpense] = useState({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Servicios', description: '', recipient_name: '', teacher_id: '' });
+  const [newExpense, setNewExpense] = useState({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Servicios', description: '', recipient_name: '', teacher_id: '', payment_method: 'Efectivo' });
+
+  // States for Transfers
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [newTransfer, setNewTransfer] = useState({ amount: '', date: new Date().toISOString().split('T')[0], from_account: 'Nequi', to_account: 'Efectivo', description: 'Traslado Interno' });
 
   // Receipt
   const receiptRef = useRef<HTMLDivElement>(null);
   const [currentReceiptData, setCurrentReceiptData] = useState<{ payment: Payment, student: Student } | null>(null);
 
   useEffect(() => {
-    Promise.all([getPayments(), getStudents(), getGuardians(), getExpenses(), getUsers()]).then(([payments, students, guardians, expenses, users]) => {
+    Promise.all([getPayments(), getStudents(), getGuardians(), getExpenses(), getUsers(), getTransfers()]).then(([payments, students, guardians, expenses, users, transfers]) => {
       setDbPayments(payments);
       setDbStudents(students);
       setDbGuardians(guardians);
       setDbExpenses(expenses);
       setDbUsers(users);
+      setDbTransfers(transfers);
       setLoading(false);
     });
   }, []);
@@ -195,7 +202,7 @@ ${receiptLink}
       await saveExpense(expenseObj);
       setDbExpenses([expenseObj, ...dbExpenses]);
       setShowAddExpenseModal(false);
-      setNewExpense({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Servicios', description: '', recipient_name: '', teacher_id: '' });
+      setNewExpense({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Servicios', description: '', recipient_name: '', teacher_id: '', payment_method: 'Efectivo' });
       toast.success('Egreso registrado');
     } catch (error: any) {
       console.error("Expense Save Error:", error);
@@ -205,6 +212,41 @@ ${receiptLink}
     }
   };
 
+  // --- ACTIONS: TRANSFERS ---
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTransfer.amount || !newTransfer.from_account || !newTransfer.to_account || newTransfer.from_account === newTransfer.to_account) {
+      toast.error('Datos inválidos para el traslado.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const transId = `trn_${Date.now()}`;
+      const transferObj = {
+        ...newTransfer,
+        id: transId,
+        amount: parseFloat(newTransfer.amount),
+      };
+      await saveTransfer(transferObj);
+      setDbTransfers([transferObj, ...dbTransfers]);
+      setShowTransferModal(false);
+      setNewTransfer({ amount: '', date: new Date().toISOString().split('T')[0], from_account: 'Nequi', to_account: 'Efectivo', description: 'Traslado Interno' });
+      toast.success('Traslado registrado exitosamente');
+    } catch (error: any) {
+      console.error("Transfer Error:", error);
+      toast.error('Error guardando traslado: ' + (error?.message || String(error)));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getWalletBalance = (method: string) => {
+    const ing = dbPayments.filter(p => (p.payment_method || 'Efectivo') === method).reduce((acc, p) => acc + Number(p.amount), 0);
+    const eg = dbExpenses.filter(e => (e.payment_method || 'Efectivo') === method).reduce((acc, e) => acc + Number(e.amount), 0);
+    const out = dbTransfers.filter(t => t.from_account === method).reduce((acc, t) => acc + Number(t.amount), 0);
+    const inc = dbTransfers.filter(t => t.to_account === method).reduce((acc, t) => acc + Number(t.amount), 0);
+    return ing - eg - out + inc;
+  };
 
   const filteredPayments = dbPayments.filter((p) => {
     const student = dbStudents.find(s => s.id === p.student_id);
@@ -234,10 +276,16 @@ ${receiptLink}
           <h2 className="text-2xl font-extrabold text-slate-800 font-display">Módulo Financiero</h2>
           <p className="text-slate-500 text-sm mt-1">Control integral de recaudos, nómina y facturación.</p>
         </div>
-        <button onClick={runMoraCronJob} disabled={isSubmitting} className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />
-          Actualizar Estados de Mora
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button onClick={() => setShowTransferModal(true)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Trasladar Dinero
+          </button>
+          <button onClick={runMoraCronJob} disabled={isSubmitting} className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Actualizar Estados de Mora
+          </button>
+        </div>
       </div>
 
       {/* OVERVIEW CARDS */}
@@ -265,6 +313,19 @@ ${receiptLink}
         </div>
       </div>
 
+      {/* WALLETS BREAKDOWN */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {['Efectivo', 'Nequi', 'Daviplata', 'Davivienda'].map(method => {
+          const totalMethod = getWalletBalance(method);
+          return (
+            <div key={method} className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex flex-col justify-center items-center">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{method}</h4>
+              <p className="text-xl font-extrabold text-[#fc7609] font-mono">${totalMethod.toLocaleString('es-CO')}</p>
+            </div>
+          );
+        })}
+      </div>
+
       {/* TABS & FILTERS */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="flex bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-full max-w-sm">
@@ -284,19 +345,6 @@ ${receiptLink}
 
       {activeTab === 'INGRESOS' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-
-          {/* BREAKDOWN BY PAYMENT METHOD */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {['Efectivo', 'Nequi', 'Daviplata', 'Davivienda'].map(method => {
-              const totalMethod = filteredPayments.filter(p => (p.payment_method || 'Efectivo') === method).reduce((sum, p) => sum + p.amount, 0);
-              return (
-                <div key={method} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex flex-col justify-center">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{method}</h4>
-                  <p className="text-xl font-extrabold text-slate-700 font-mono">${totalMethod.toLocaleString('es-CO')}</p>
-                </div>
-              );
-            })}
-          </div>
 
           {/* PENDING PAYMENTS SECTION */}
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
@@ -469,7 +517,7 @@ ${receiptLink}
             </div>
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                <tr><th className="px-6 py-4">Fecha</th><th className="px-6 py-4">Categoría</th><th className="px-6 py-4">Descripción / Destinatario</th><th className="px-6 py-4 text-right">Valor Gasto</th></tr>
+                <tr><th className="px-6 py-4">Fecha</th><th className="px-6 py-4">Categoría</th><th className="px-6 py-4">Descripción / Destinatario</th><th className="px-6 py-4">Medio</th><th className="px-6 py-4 text-right">Valor Gasto</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredExpenses.map((exp) => {
@@ -482,12 +530,39 @@ ${receiptLink}
                         <div className="font-bold text-slate-800">{exp.description}</div>
                         <div className="text-[10px] text-slate-500">{exp.teacher_id ? `Nómina Docente: ${teacher?.nombres} ${teacher?.apellidos}` : exp.recipient_name}</div>
                       </td>
+                      <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase border border-slate-200">{exp.payment_method || 'Efectivo'}</span></td>
                       <td className="px-6 py-4 text-right font-bold text-rose-600 font-mono">-${exp.amount.toLocaleString('es-CO')}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* TRANSFERS HISTORY */}
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 mt-6">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4"><DollarSign className="h-5 w-5 text-[#fc7609]" /> Historial de Traslados Internos</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <tr><th className="px-6 py-4">Fecha</th><th className="px-6 py-4">Origen</th><th className="px-6 py-4">Destino</th><th className="px-6 py-4">Motivo</th><th className="px-6 py-4 text-right">Monto</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dbTransfers.map((trn) => (
+                    <tr key={trn.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 text-slate-600 font-medium">{trn.date}</td>
+                      <td className="px-6 py-4"><span className="bg-rose-50 text-rose-600 px-2 py-1 rounded text-[10px] font-bold uppercase border border-rose-100">{trn.from_account}</span></td>
+                      <td className="px-6 py-4"><span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold uppercase border border-emerald-100">{trn.to_account}</span></td>
+                      <td className="px-6 py-4 font-bold text-slate-800">{trn.description}</td>
+                      <td className="px-6 py-4 text-right font-bold text-blue-600 font-mono">${trn.amount.toLocaleString('es-CO')}</td>
+                    </tr>
+                  ))}
+                  {dbTransfers.length === 0 && (
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No hay traslados registrados.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -607,6 +682,14 @@ ${receiptLink}
                 <div><label className="block text-xs font-bold text-slate-500 mb-1">Destinatario / Proveedor</label><input type="text" value={newExpense.recipient_name} onChange={e => setNewExpense({ ...newExpense, recipient_name: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
               )}
               <div><label className="block text-xs font-bold text-slate-500 mb-1">Descripción</label><input type="text" required value={newExpense.description} onChange={e => setNewExpense({ ...newExpense, description: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Medio de Pago</label>
+                <select required value={newExpense.payment_method} onChange={e => setNewExpense({ ...newExpense, payment_method: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Nequi">Nequi</option>
+                  <option value="Daviplata">Daviplata</option>
+                  <option value="Davivienda">Davivienda</option>
+                </select>
+              </div>
               <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor ($)</label><input type="number" required value={newExpense.amount} onChange={e => setNewExpense({ ...newExpense, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
               <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
 
@@ -733,6 +816,45 @@ ${receiptLink}
               <p className="font-bold text-lg">¡Gracias por confiar en Taller Creativo De Inglés!</p>
               <p className="text-[#64748b] text-sm font-medium">Conserve este recibo digital para cualquier duda.</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-100 p-6">
+              <h3 className="font-extrabold text-lg text-slate-800 font-display">Trasladar Dinero</h3>
+            </div>
+            <form onSubmit={handleTransfer} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Cuenta Origen (Sale)</label>
+                <select value={newTransfer.from_account} onChange={e => setNewTransfer({ ...newTransfer, from_account: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Nequi">Nequi</option>
+                  <option value="Daviplata">Daviplata</option>
+                  <option value="Davivienda">Davivienda</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Cuenta Destino (Entra)</label>
+                <select value={newTransfer.to_account} onChange={e => setNewTransfer({ ...newTransfer, to_account: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Nequi">Nequi</option>
+                  <option value="Daviplata">Daviplata</option>
+                  <option value="Davivienda">Davivienda</option>
+                </select>
+              </div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a trasladar ($)</label><input type="number" required value={newTransfer.amount} onChange={e => setNewTransfer({ ...newTransfer, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Motivo (Opcional)</label><input type="text" value={newTransfer.description} onChange={e => setNewTransfer({ ...newTransfer, description: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <button type="button" onClick={() => setShowTransferModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 font-bold text-white bg-slate-800 rounded-lg">Registrar Traslado</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
