@@ -109,6 +109,8 @@ export interface Payment {
   amount: number;
   payment_date: string; // YYYY-MM-DD
   period_covered: string; // e.g., "Junio 2024"
+  payment_method?: string; // e.g., "Efectivo", "Nequi", "Daviplata", "Davivienda"
+  mes_pagado?: string; // e.g., "2026-08"
 }
 
 export interface Expense {

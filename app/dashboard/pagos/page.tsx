@@ -33,7 +33,11 @@ export default function PagosPage() {
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
   const [modalStudentSearch, setModalStudentSearch] = useState('');
-  const [newPayment, setNewPayment] = useState({ amount: '70000', period_covered: 'Mensualidad', payment_date: new Date().toISOString().split('T')[0] });
+
+  // Calculate current month for initial state
+  const currentMonthStrInit = new Date().toLocaleString('es-CO', { month: 'long' });
+  const [newPayment, setNewPayment] = useState({ amount: '70000', period_covered: `Mensualidad ${currentMonthStrInit.charAt(0).toUpperCase() + currentMonthStrInit.slice(1)}`, payment_date: new Date().toISOString().split('T')[0], payment_method: 'Efectivo', mes_pagado: new Date().toISOString().substring(0, 7) });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // States for Egresos
@@ -74,7 +78,9 @@ export default function PagosPage() {
         student_id: selectedStudentForPayment.id,
         amount: newPayment.amount,
         period_covered: newPayment.period_covered,
-        payment_date: newPayment.payment_date
+        payment_date: newPayment.payment_date,
+        payment_method: newPayment.payment_method,
+        mes_pagado: newPayment.mes_pagado
       };
 
       const response = await fetch('/api/payments', {
@@ -279,10 +285,23 @@ ${receiptLink}
       {activeTab === 'INGRESOS' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
 
-          {/* FAST PAYMENT SECTION */}
+          {/* BREAKDOWN BY PAYMENT METHOD */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {['Efectivo', 'Nequi', 'Daviplata', 'Davivienda'].map(method => {
+              const totalMethod = filteredPayments.filter(p => (p.payment_method || 'Efectivo') === method).reduce((sum, p) => sum + p.amount, 0);
+              return (
+                <div key={method} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex flex-col justify-center">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{method}</h4>
+                  <p className="text-xl font-extrabold text-slate-700 font-mono">${totalMethod.toLocaleString('es-CO')}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* PENDING PAYMENTS SECTION */}
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users className="h-5 w-5 text-[#fc7609]" /> Estudiantes Activos</h3>
+              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users className="h-5 w-5 text-[#fc7609]" /> Pagos Pendientes de {new Date().toLocaleString('es-CO', { month: 'long' }).charAt(0).toUpperCase() + new Date().toLocaleString('es-CO', { month: 'long' }).slice(1)}</h3>
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div className="relative flex-1 sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -292,7 +311,7 @@ ${receiptLink}
                   onClick={() => { setSelectedStudentForPayment(null); setModalStudentSearch(''); setShowAddPaymentModal(true); }}
                   className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm whitespace-nowrap transition-colors flex items-center gap-2"
                 >
-                  <PlusCircle className="h-4 w-4" /> Agregar Pago
+                  <PlusCircle className="h-4 w-4" /> Agregar Pago Libre
                 </button>
               </div>
             </div>
@@ -308,22 +327,43 @@ ${receiptLink}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {dbStudents.filter(s => s.status === StudentStatus.ACTIVE && (s.nombres.toLowerCase().includes(paymentSearch.toLowerCase()) || s.documento_identidad.includes(paymentSearch))).map(student => (
-                    <tr key={student.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-bold text-slate-700">{student.nombres} {student.apellidos}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{student.documento_identidad}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-[9px] rounded font-bold uppercase ${student.status === StudentStatus.ACTIVE ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {student.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button onClick={() => { setSelectedStudentForPayment(student); setShowAddPaymentModal(true); }} className="bg-[#fc7609] hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                          Registrar Pago
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const currentMonthPrefix = new Date().toISOString().substring(0, 7);
+                    const pendingStudents = dbStudents.filter(s => {
+                      if (s.status !== StudentStatus.ACTIVE) return false;
+                      const searchLower = paymentSearch.toLowerCase();
+                      if (paymentSearch && !s.nombres.toLowerCase().includes(searchLower) && !s.documento_identidad.includes(paymentSearch)) return false;
+                      const hasPaidThisMonth = dbPayments.some(p => p.student_id === s.id && (p.mes_pagado === currentMonthPrefix || p.payment_date.startsWith(currentMonthPrefix)));
+                      return !hasPaidThisMonth;
+                    });
+
+                    if (pendingStudents.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-medium">
+                            ¡Genial! No tienes pagos pendientes por recibir de estudiantes activos este mes.
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return pendingStudents.map(student => (
+                      <tr key={student.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-bold text-slate-700">{student.nombres} {student.apellidos}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-slate-500">{student.documento_identidad}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 text-[9px] rounded font-bold uppercase bg-rose-100 text-rose-700`}>
+                            PENDIENTE
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={() => { setSelectedStudentForPayment(student); setShowAddPaymentModal(true); }} className="bg-[#fc7609] hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                            Registrar Pago
+                          </button>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -347,16 +387,18 @@ ${receiptLink}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  <tr><th className="px-6 py-4">Fecha Pago</th><th className="px-6 py-4">Estudiante</th><th className="px-6 py-4">Concepto</th><th className="px-6 py-4 text-right">Valor Pagado</th><th className="px-6 py-4 text-center">Recibo</th></tr>
+                  <tr><th className="px-6 py-4">ID</th><th className="px-6 py-4">Fecha Pago</th><th className="px-6 py-4">Estudiante</th><th className="px-6 py-4">Concepto</th><th className="px-6 py-4">Medio</th><th className="px-6 py-4 text-right">Valor Pagado</th><th className="px-6 py-4 text-center">Recibo</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredPayments.map((payment) => {
                     const student = dbStudents.find(s => s.id === payment.student_id);
                     return (
                       <tr key={payment.id} className="hover:bg-orange-50/50">
+                        <td className="px-6 py-4 text-slate-600 font-medium">{payment.id}</td>
                         <td className="px-6 py-4 text-slate-600 font-medium"><Calendar className="h-4 w-4 inline mr-2 text-slate-400" />{payment.payment_date}</td>
                         <td className="px-6 py-4 font-bold text-slate-800">{student ? `${student.nombres} ${student.apellidos}` : 'N/A'}</td>
                         <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase">{payment.period_covered}</span></td>
+                        <td className="px-6 py-4"><span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase border border-blue-100">{payment.payment_method || 'Efectivo'}</span></td>
                         <td className="px-6 py-4 text-right font-bold text-emerald-600 font-mono">${payment.amount.toLocaleString('es-CO')}</td>
                         <td className="px-6 py-4 text-center">
                           {student && (
@@ -503,7 +545,24 @@ ${receiptLink}
               ) : (
                 <form onSubmit={handleRegisterPayment} className="space-y-4">
                   <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor a pagar ($)</label><input type="number" required value={newPayment.amount} onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
-                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({ ...newPayment, period_covered: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Concepto / Descripción</label><input type="text" required value={newPayment.period_covered} onChange={e => setNewPayment({ ...newPayment, period_covered: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Mes a Pagar</label><input type="month" required value={newPayment.mes_pagado} onChange={e => {
+                    const mes = e.target.value;
+                    if (mes) {
+                      const mesName = new Date(mes + '-02T12:00:00').toLocaleDateString('es-CO', { month: 'long' });
+                      setNewPayment({ ...newPayment, mes_pagado: mes, period_covered: `Mensualidad ${mesName.charAt(0).toUpperCase() + mesName.slice(1)}` });
+                    } else {
+                      setNewPayment({ ...newPayment, mes_pagado: mes });
+                    }
+                  }} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 mb-1">Medio de Pago</label>
+                    <select required value={newPayment.payment_method} onChange={e => setNewPayment({ ...newPayment, payment_method: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50">
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Nequi">Nequi</option>
+                      <option value="Daviplata">Daviplata</option>
+                      <option value="Davivienda">Davivienda</option>
+                    </select>
+                  </div>
                   <div><label className="block text-xs font-bold text-slate-500 mb-1">Fecha</label><input type="date" required value={newPayment.payment_date} onChange={e => setNewPayment({ ...newPayment, payment_date: e.target.value })} className="w-full p-2 border rounded-xl bg-slate-50" /></div>
                   <div className="flex justify-end gap-2 pt-4">
                     <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
@@ -577,7 +636,7 @@ ${receiptLink}
 
             <div className="flex flex-col gap-3">
               <button onClick={handleShareWhatsApp} disabled={isSubmitting} className="w-full bg-[#fc7609] hover:bg-orange-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/30">
-                <Share2 className="h-5 w-5" /> Descargar PDF y Enviar
+                <Share2 className="h-5 w-5" /> Enviar recibo
               </button>
               <button onClick={handlePrintPOS} disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-slate-900/20">
                 <Printer className="h-5 w-5" /> Imprimir Factura
@@ -622,12 +681,17 @@ ${receiptLink}
               <div className="bg-[#ffedd5] p-6 rounded-3xl border border-[#fed7aa] mb-8 text-center">
                 <h3 className="text-sm font-bold text-[#fb923c] uppercase tracking-widest mb-1">Mes de Pago</h3>
                 <p className="font-extrabold text-2xl text-[#fc7609] capitalize mb-5">
-                  {new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
+                  {currentReceiptData.payment.mes_pagado
+                    ? new Date(currentReceiptData.payment.mes_pagado + '-02T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+                    : new Date(currentReceiptData.payment.payment_date + 'T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
                 </p>
 
                 <div className="bg-[#ffffff] p-5 rounded-2xl border border-[#fed7aa] flex flex-col items-center justify-center w-full relative z-10">
                   <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-1">Concepto</p>
                   <p className="font-bold text-lg text-[#334155] mb-5 text-center">{currentReceiptData.payment.period_covered}</p>
+
+                  <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-1">Medio de Pago</p>
+                  <p className="font-bold text-lg text-[#334155] mb-5 text-center">{currentReceiptData.payment.payment_method || 'Efectivo'}</p>
 
                   <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-1">Total Pagado</p>
                   <p className="text-4xl font-extrabold text-[#fc7609] text-center">${currentReceiptData.payment.amount.toLocaleString('es-CO')}</p>
@@ -662,6 +726,7 @@ ${receiptLink}
             </div>
             <div className="mb-4 text-sm border-b border-black pb-2 border-dashed">
               <p><strong>Concepto:</strong> {currentReceiptData.payment.period_covered}</p>
+              <p><strong>Medio:</strong> {currentReceiptData.payment.payment_method || 'Efectivo'}</p>
               <p className="mt-2 text-right text-lg font-bold">TOTAL: ${currentReceiptData.payment.amount.toLocaleString('es-CO')}</p>
             </div>
             <div className="text-center text-xs">

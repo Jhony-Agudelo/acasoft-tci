@@ -339,7 +339,7 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
                               <span className="text-[10px] font-mono text-slate-400">ID: {student.documento_identidad}</span>
 
                               {(isTeacher || isDirector) && (
-                                <div className="mt-1 flex items-center gap-1.5 text-[10px] text-rose-600 bg-rose-50 px-2 py-1 rounded-md w-fit border border-rose-100">
+                                <div className="mt-1 flex items-center gap-1.5 text-[10px] text-sky-600 bg-sky-50 px-2 py-1 rounded-md w-fit border border-sky-100">
                                   {(() => {
                                     const guardian = guardians.find(g => g.id === student.guardian_id);
                                     if (guardian) return <><Phone className="h-3 w-3" /> <strong>{guardian.parentesco}:</strong> {guardian.nombre_completo} ({guardian.telefono})</>;
@@ -436,34 +436,34 @@ export function EditCourseModal({ course, teachers, students, guardians = [], cu
                   .filter(s => !assignedStudentIds.has(s.id)) // Solo los que NO están ya en el curso
                   .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(addStudentSearch.toLowerCase()) || s.documento_identidad.includes(addStudentSearch))
                   .length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center italic py-4">No se encontraron estudiantes para agregar.</p>
-                  ) : (
-                    students
-                      .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED')
-                      .filter(s => !assignedStudentIds.has(s.id))
-                      .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(addStudentSearch.toLowerCase()) || s.documento_identidad.includes(addStudentSearch))
-                      .slice(0, 50) // Limit to 50 to avoid performance issues
-                      .map(student => (
-                        <div key={student.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
-                          <div>
-                            <p className="font-bold text-sm text-slate-700">{student.nombres} {student.apellidos}</p>
-                            <p className="text-[10px] text-slate-500">ID: {student.documento_identidad}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toggleStudent(student.id); // Add to course
-                              setShowAddStudentModal(false); // Close modal automatically
-                              setAddStudentSearch(''); // Reset search
-                              toast.success('Estudiante agregado al curso');
-                            }}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
-                          >
-                            Agregar
-                          </button>
+                  <p className="text-sm text-slate-400 text-center italic py-4">No se encontraron estudiantes para agregar.</p>
+                ) : (
+                  students
+                    .filter(s => s.status !== StudentStatus.REGISTERED && s.status !== 'RETIRED')
+                    .filter(s => !assignedStudentIds.has(s.id))
+                    .filter(s => (s.nombres + ' ' + s.apellidos).toLowerCase().includes(addStudentSearch.toLowerCase()) || s.documento_identidad.includes(addStudentSearch))
+                    .slice(0, 50) // Limit to 50 to avoid performance issues
+                    .map(student => (
+                      <div key={student.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                        <div>
+                          <p className="font-bold text-sm text-slate-700">{student.nombres} {student.apellidos}</p>
+                          <p className="text-[10px] text-slate-500">ID: {student.documento_identidad}</p>
                         </div>
-                      ))
-                  )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleStudent(student.id); // Add to course
+                            setShowAddStudentModal(false); // Close modal automatically
+                            setAddStudentSearch(''); // Reset search
+                            toast.success('Estudiante agregado al curso');
+                          }}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+                        >
+                          Agregar
+                        </button>
+                      </div>
+                    ))
+                )}
               </div>
             </div>
           </div>

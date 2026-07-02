@@ -5,7 +5,7 @@ import { isPgConfigured, dbSavePayment, dbSaveStudent, dbGetStudents } from '@/l
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { student_id, amount, payment_date, period_covered, clientStudents } = body;
+    const { student_id, amount, payment_date, period_covered, payment_method, mes_pagado, clientStudents } = body;
 
     if (!student_id || !amount || !period_covered) {
       return NextResponse.json(
@@ -39,33 +39,13 @@ export async function POST(req: NextRequest) {
       amount: Number(amount),
       payment_date: payment_date || new Date().toISOString().split('T')[0],
       period_covered,
+      payment_method: payment_method || 'Efectivo',
+      mes_pagado: mes_pagado || '',
     };
 
-    // 2. Update Student Deadline: add exactly one month
-    let originalDeadline = student.payment_deadline_date;
-    let deadlineDateObj = new Date(originalDeadline + 'T12:00:00'); // set mid-day to avoid timezone shifting issues
-    if (isNaN(deadlineDateObj.getTime())) {
-      deadlineDateObj = new Date();
-    }
-    
-    // Add 1 month to the deadline
-    const paymentDay = student.payment_day || 15;
-    deadlineDateObj.setDate(1); // prevent overflow before adding month
-    deadlineDateObj.setMonth(deadlineDateObj.getMonth() + 1);
-    
-    // Set to paymentDay, or the last day of the month if paymentDay > days in month
-    const nextMonth = deadlineDateObj.getMonth();
-    deadlineDateObj.setDate(paymentDay);
-    if (deadlineDateObj.getMonth() !== nextMonth) {
-      deadlineDateObj.setDate(0); // Back to last day of previous month
-    }
-    
-    const newDeadline = deadlineDateObj.toISOString().split('T')[0];
-    
     // Create copy of student with mutations
     const updatedStudent: Student = {
       ...student,
-      payment_deadline_date: newDeadline,
     };
 
     // 3. Unblock if BLOCKED

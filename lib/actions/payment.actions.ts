@@ -10,6 +10,8 @@ function mapPayment(prismaPayment: any): Payment {
     amount: prismaPayment.amount,
     payment_date: prismaPayment.payment_date,
     period_covered: prismaPayment.period_covered,
+    payment_method: prismaPayment.payment_method,
+    mes_pagado: prismaPayment.mes_pagado,
   };
 }
 
@@ -47,6 +49,8 @@ export async function savePayment(payment: Payment): Promise<boolean> {
         amount: payment.amount,
         payment_date: payment.payment_date,
         period_covered: payment.period_covered,
+        payment_method: payment.payment_method || 'Efectivo',
+        mes_pagado: payment.mes_pagado || '',
       },
       create: {
         id: payment.id,
@@ -54,6 +58,8 @@ export async function savePayment(payment: Payment): Promise<boolean> {
         amount: payment.amount,
         payment_date: payment.payment_date,
         period_covered: payment.period_covered,
+        payment_method: payment.payment_method || 'Efectivo',
+        mes_pagado: payment.mes_pagado || '',
       },
     });
     return true;
