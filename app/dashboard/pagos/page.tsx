@@ -500,7 +500,7 @@ ${receiptLink}
                       <td className="px-4 py-3 font-bold text-slate-700">{teacher.nombres} {teacher.apellidos}</td>
                       <td className="px-4 py-3 font-mono text-xs text-slate-500">{teacher.documento_identidad || 'N/A'}</td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => { setNewExpense({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Nómina', description: 'Pago Nómina', recipient_name: '', teacher_id: teacher.id }); setShowAddExpenseModal(true); }} className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                        <button onClick={() => { setNewExpense({ amount: '', date: new Date().toISOString().split('T')[0], category: 'Nómina', description: 'Pago Nómina', recipient_name: '', teacher_id: teacher.id, payment_method: 'Efectivo' }); setShowAddExpenseModal(true); }} className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
                           Pagar Nómina
                         </button>
                       </td>
