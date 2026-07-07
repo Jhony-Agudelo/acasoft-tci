@@ -21,6 +21,7 @@ export default function DashboardHome() {
   const [stats, setStats] = useState({ students: 0, courses: 0, payments: 0 });
   const [teacherCourses, setTeacherCourses] = useState<Course[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function DashboardHome() {
         }
       }
       setAllStudents(students);
+      setAllCourses(courses);
       setStats({
         students: students.length,
         courses: courses.length,
@@ -105,6 +107,7 @@ export default function DashboardHome() {
   const currentDayStr = String(new Date().getDate()).padStart(2, '0');
   
   const birthdayStudentsThisMonth = allStudents.filter(s => {
+    if (s.status !== 'ACTIVE') return false;
     if (!s.fecha_nacimiento) return false;
     const parts = s.fecha_nacimiento.split('-');
     return parts.length === 3 && parts[1] === currentMonthStr;
@@ -243,6 +246,16 @@ export default function DashboardHome() {
             {birthdayStudentsThisMonth.map((student) => {
               const day = student.fecha_nacimiento!.split('-')[2];
               const isToday = day === currentDayStr;
+              
+              let courseName = student.curso_actual;
+              if (student.course_id) {
+                const course = allCourses.find(c => c.id === student.course_id);
+                if (course) courseName = course.nombre_curso;
+              } else {
+                const courseById = allCourses.find(c => c.id === student.curso_actual);
+                if (courseById) courseName = courseById.nombre_curso;
+              }
+
               return (
                 <div 
                   key={student.id} 
@@ -257,7 +270,7 @@ export default function DashboardHome() {
                         {student.nombres.split(' ')[0]} {student.apellidos.split(' ')[0]}
                       </p>
                       <p className={`text-xs font-medium ${isToday ? 'text-[#fc7609]' : 'text-slate-400'}`}>
-                        {isToday ? '¡Hoy es su cumpleaños!' : `Día ${day}`}
+                        {isToday ? '¡Hoy es su cumpleaños!' : `Día ${day}`} • {courseName || 'Sin curso'}
                       </p>
                     </div>
                   </div>
