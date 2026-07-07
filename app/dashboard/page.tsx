@@ -100,6 +100,22 @@ export default function DashboardHome() {
     blockedStudentsList = allStudents.filter(s => s.status === 'BLOCKED');
   }
 
+  // Cumpleaños
+  const currentMonthStr = String(new Date().getMonth() + 1).padStart(2, '0');
+  const currentDayStr = String(new Date().getDate()).padStart(2, '0');
+  
+  const birthdayStudentsThisMonth = allStudents.filter(s => {
+    if (!s.fecha_nacimiento) return false;
+    const parts = s.fecha_nacimiento.split('-');
+    return parts.length === 3 && parts[1] === currentMonthStr;
+  });
+
+  birthdayStudentsThisMonth.sort((a, b) => {
+    const dayA = a.fecha_nacimiento!.split('-')[2];
+    const dayB = b.fecha_nacimiento!.split('-')[2];
+    return dayA.localeCompare(dayB);
+  });
+
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-[#fc7609] to-orange-400 rounded-3xl p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">
@@ -214,6 +230,42 @@ export default function DashboardHome() {
               <p className="text-slate-500 font-medium">No tienes clases programadas para hoy.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* BIRTHDAYS SECTION */}
+      {birthdayStudentsThisMonth.length > 0 && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden p-6 mt-6">
+          <h3 className="font-extrabold text-lg text-slate-800 font-display mb-4 flex items-center gap-2">
+            🎉 Cumpleañeros del Mes
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {birthdayStudentsThisMonth.map((student) => {
+              const day = student.fecha_nacimiento!.split('-')[2];
+              const isToday = day === currentDayStr;
+              return (
+                <div 
+                  key={student.id} 
+                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${isToday ? 'bg-orange-50 border-orange-200 shadow-sm shadow-orange-100/50' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${isToday ? 'bg-[#fc7609] text-white shadow-md shadow-orange-500/30' : 'bg-white text-slate-500 shadow-sm'}`}>
+                      {day}
+                    </div>
+                    <div>
+                      <p className={`font-bold text-sm ${isToday ? 'text-orange-900' : 'text-slate-800'}`}>
+                        {student.nombres.split(' ')[0]} {student.apellidos.split(' ')[0]}
+                      </p>
+                      <p className={`text-xs font-medium ${isToday ? 'text-[#fc7609]' : 'text-slate-400'}`}>
+                        {isToday ? '¡Hoy es su cumpleaños!' : `Día ${day}`}
+                      </p>
+                    </div>
+                  </div>
+                  {isToday && <span className="text-2xl animate-bounce">🎈</span>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

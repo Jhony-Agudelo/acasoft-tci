@@ -32,7 +32,7 @@ export function Footer() {
               </a>
             </div>
             <p className="mt-1 text-[10px] font-mono text-slate-400">
-              Todos los derechos reservados - 2026 ACA-Soft
+              Todos los derechos reservados - 2026 AcaSoft
             </p>
           </div>
         </div>
