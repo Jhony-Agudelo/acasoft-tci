@@ -166,6 +166,7 @@ ${receiptLink}
     }
   };
 
+  /*
   const runMoraCronJob = async () => {
     setIsSubmitting(true);
     try {
@@ -181,6 +182,7 @@ ${receiptLink}
       setIsSubmitting(false);
     }
   };
+  */
 
   // --- ACTIONS: EGRESOS ---
   const handleRegisterExpense = async (e: React.FormEvent) => {
@@ -281,10 +283,12 @@ ${receiptLink}
             <DollarSign className="h-4 w-4" />
             Trasladar Dinero
           </button>
+          {/* 
           <button onClick={runMoraCronJob} disabled={isSubmitting} className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             Actualizar Estados de Mora
           </button>
+          */}
         </div>
       </div>
 

@@ -210,7 +210,7 @@ export default function DashboardHome() {
               {todayClasses.map((cls, idx) => (
                 <a 
                   key={idx} 
-                  href={`/dashboard/cursos?search=${encodeURIComponent(cls.courseName)}`}
+                  href={isTeacher ? `/dashboard/mis-grupos?search=${encodeURIComponent(cls.courseName)}` : `/dashboard/cursos?search=${encodeURIComponent(cls.courseName)}`}
                   className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:border-[#fc7609]/30 hover:shadow-md transition-all group block cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
