@@ -1,24 +1,28 @@
 import React from 'react';
+import { WhatsAppShareButtons } from './WhatsAppShareButtons';
 
 export function Footer() {
   return (
     <footer className="bg-white border-t border-slate-100 relative overflow-hidden shrink-0 mt-auto" id="footer_section">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-orange-300 to-transparent opacity-50"></div>
-      <div className="max-w-5xl mx-auto py-10 px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="flex items-center gap-2 mb-2">
+      <div className="max-w-6xl mx-auto py-8 px-6">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+            <div className="flex items-center gap-2 mb-1.5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#fc7609] to-orange-400 flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
                 <span className="font-display font-bold text-xs tracking-wider">TCI</span>
               </div>
               <h3 className="font-display font-bold text-slate-800 text-sm">Taller Creativo De Inglés</h3>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium mt-1">
+            <p className="text-[11px] text-slate-500 font-medium">
               © 2026 TCI — La Virginia, Risaralda
             </p>
           </div>
 
-          <div className="flex flex-col items-center md:items-end gap-3">
+          {/* Botones para compartir enlaces de Inscripciones y Seguimiento por WhatsApp */}
+          <WhatsAppShareButtons variant="footer" />
+
+          <div className="flex flex-col items-center lg:items-end gap-2">
             <div className="flex gap-4">
               <a href="#" className="text-slate-400 hover:text-[#fc7609] transition-colors p-2 bg-slate-50 hover:bg-orange-50 rounded-full border border-slate-100 hover:border-orange-100">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

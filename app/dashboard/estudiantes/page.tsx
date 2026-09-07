@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, Edit, GraduationCap, X, Calendar, DollarSign, ArrowRight } from 'lucide-react';
+import { PlusCircle, Search, Edit, GraduationCap, X, Calendar, DollarSign, ArrowRight, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Student, Guardian, Course, User, StudentStatus, SchoolDayPeriod, COLEGIOS_LA_VIRGINIA } from '@/lib/db-schema';
 import { getStudents, saveStudent } from '@/lib/actions/student.actions';
 import { getGuardians, saveGuardian } from '@/lib/actions/guardian.actions';
@@ -20,6 +20,10 @@ export default function EstudiantesPage() {
   // Filters
   const [studentSearch, setStudentSearch] = useState('');
   const [studentFilterStatus, setStudentFilterStatus] = useState<string>('TODOS');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(15);
 
   // Modals
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -147,6 +151,14 @@ export default function EstudiantesPage() {
     return nameA.localeCompare(nameB);
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [studentSearch, studentFilterStatus, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
+
   if (loading) return <div className="p-10 text-center font-bold text-slate-500">Cargando datos...</div>;
 
   return (
@@ -195,33 +207,35 @@ export default function EstudiantesPage() {
       </div>
 
       {/* Student List */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
           <h3 className="font-bold text-slate-600 text-sm">Lista de Estudiantes</h3>
           <span className="bg-orange-100 text-[#fc7609] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
             Total: {filteredStudents.length} {filteredStudents.length === 1 ? 'Estudiante' : 'Estudiantes'}
           </span>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Scrollable table container */}
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 shadow-2xs">
               <tr>
-                <th className="px-6 py-4">Documento</th>
-                <th className="px-6 py-4">Estudiante</th>
-                <th className="px-6 py-4">Acudiente</th>
-                <th className="px-6 py-4">Estado</th>
-                <th className="px-6 py-4 text-right">Acciones</th>
+                <th className="px-6 py-4 bg-slate-50">Documento</th>
+                <th className="px-6 py-4 bg-slate-50">Estudiante</th>
+                <th className="px-6 py-4 bg-slate-50">Acudiente</th>
+                <th className="px-6 py-4 bg-slate-50">Estado</th>
+                <th className="px-6 py-4 bg-slate-50 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredStudents.length === 0 ? (
+              {paginatedStudents.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-slate-400 italic font-medium">
                     No se encontraron estudiantes registrados en la Base de Datos.
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((student) => {
+                paginatedStudents.map((student) => {
                   const guardian = dbGuardians.find(g => g.id === student.guardian_id);
                   return (
                     <tr key={student.id} className="hover:bg-orange-50/50 transition-colors">
@@ -269,6 +283,68 @@ export default function EstudiantesPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Paginador */}
+        <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-600">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Mostrando <span className="font-bold text-slate-800">{filteredStudents.length > 0 ? startIndex + 1 : 0}</span> a <span className="font-bold text-slate-800">{Math.min(startIndex + itemsPerPage, filteredStudents.length)}</span> de <span className="font-bold text-slate-800">{filteredStudents.length}</span> estudiantes
+            </span>
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="text-slate-400 text-[11px]">Por página:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-[#fc7609]"
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Primera página"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-bold"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Anterior</span>
+            </button>
+
+            <div className="flex items-center px-2 font-bold text-slate-700">
+              <span>Página {currentPage} de {totalPages}</span>
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-bold"
+            >
+              <span>Siguiente</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Última página"
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
