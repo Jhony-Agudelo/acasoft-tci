@@ -62,3 +62,16 @@ export async function saveGuardian(guardian: Guardian): Promise<boolean> {
     return false;
   }
 }
+
+export async function deleteGuardian(id: string): Promise<boolean> {
+  try {
+    await prisma.guardians.delete({
+      where: { id },
+    });
+    return true;
+  } catch (error) {
+    console.error('Error deleting guardian:', error);
+    return false;
+  }
+}
+

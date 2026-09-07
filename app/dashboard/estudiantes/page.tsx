@@ -15,6 +15,7 @@ export default function EstudiantesPage() {
   const [dbGuardians, setDbGuardians] = useState<Guardian[]>([]);
   const [dbCourses, setDbCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
 
   // Filters
   const [studentSearch, setStudentSearch] = useState('');
@@ -41,6 +42,15 @@ export default function EstudiantesPage() {
       setDbCourses(courses);
       setLoading(false);
     });
+    
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.user) {
+          setCurrentUserRole(data.user.role);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleCreateStudent = async (e: React.FormEvent) => {
@@ -97,11 +107,33 @@ export default function EstudiantesPage() {
       
       if (updatedGuardian) {
         await saveGuardian(updatedGuardian);
-        setDbGuardians(dbGuardians.map(g => g.id === updatedGuardian.id ? updatedGuardian : g));
+        const exists = dbGuardians.some(g => g.id === updatedGuardian.id);
+        if (exists) {
+          setDbGuardians(dbGuardians.map(g => g.id === updatedGuardian.id ? updatedGuardian : g));
+        } else {
+          setDbGuardians([...dbGuardians, updatedGuardian]);
+        }
       }
       // Toast success is handled inside the modal
     } catch (error) {
       throw error; // Let the modal catch it
+    }
+  };
+
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      // Usaremos una server action para eliminar al estudiante
+      const { deleteStudent } = await import('@/lib/actions/student.actions');
+      const success = await deleteStudent(studentId);
+      if (success) {
+        setDbStudents(dbStudents.filter(s => s.id !== studentId));
+        setEditStudent(null);
+        toast.success('Estudiante eliminado exitosamente.');
+      } else {
+        toast.error('No se pudo eliminar el estudiante.');
+      }
+    } catch (error) {
+      toast.error('Error al intentar eliminar el estudiante.');
     }
   };
 
@@ -253,8 +285,11 @@ export default function EstudiantesPage() {
         <EditStudentModal 
           student={editStudent} 
           guardian={dbGuardians.find(g => g.id === editStudent.guardian_id)}
+          allGuardians={dbGuardians}
+          canDelete={currentUserRole === 'ADMIN' || currentUserRole === 'DIRECTOR'}
           onClose={() => setEditStudent(null)} 
           onSave={handleUpdateStudent}
+          onDelete={handleDeleteStudent}
         />
       )}
 

@@ -93,3 +93,15 @@ export async function saveStudent(student: Student): Promise<boolean> {
     return false;
   }
 }
+
+export async function deleteStudent(id: string): Promise<boolean> {
+  try {
+    await prisma.students.delete({
+      where: { id },
+    });
+    return true;
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    return false;
+  }
+}

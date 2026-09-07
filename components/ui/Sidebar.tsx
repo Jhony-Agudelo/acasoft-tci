@@ -4,10 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BookOpen, GraduationCap, Users, DollarSign, Settings, HomeIcon, X, LogOut, BookOpenCheck, NotebookPen, School } from 'lucide-react';
+import { BookOpen, GraduationCap, Users, DollarSign, Settings, HomeIcon, X, LogOut, BookOpenCheck, NotebookPen, School, ShieldCheck } from 'lucide-react';
 import { UserRole, User } from '@/lib/db-schema';
 import logoApp from '@/assets/img/logoApp.png';
-import { link } from 'fs';
 
 interface SidebarProps {
   currentUser: User | null;
@@ -70,6 +69,15 @@ export function Sidebar({
               >
                 <GraduationCap className="h-4 w-4 shrink-0" />
                 <span>Estudiantes (Core)</span>
+              </Link>
+
+              <Link
+                href="/dashboard/acudientes"
+                className={`nav-button-sidebar w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold font-display transition-all text-left
+                  ${pathname.includes('/acudientes') ? 'bg-orange-50 text-[#fc7609]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>Acudientes</span>
               </Link>
 
               {isAdmin && (
