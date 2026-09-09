@@ -5,6 +5,7 @@ import { Student, Guardian, Course, StudentStatus, COLEGIOS_LA_VIRGINIA } from '
 import { X, User, Save, Upload, Search, ShieldCheck, ExternalLink, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { saveGuardian } from '@/lib/actions/guardian.actions';
 
 interface ViewModalProps {
   student: Student;
@@ -73,9 +74,10 @@ interface EditModalProps {
   onClose: () => void;
   onSave: (updatedStudent: Student, updatedGuardian?: Guardian) => void;
   onDelete?: (studentId: string) => void;
+  onNewGuardianCreated?: (newGuardian: Guardian) => void;
 }
 
-export function EditStudentModal({ student, guardian, allGuardians = [], canDelete, onClose, onSave, onDelete }: EditModalProps) {
+export function EditStudentModal({ student, guardian, allGuardians = [], canDelete, onClose, onSave, onDelete, onNewGuardianCreated }: EditModalProps) {
   const [formData, setFormData] = useState<Student>({ ...student });
   const [selectedGuardian, setSelectedGuardian] = useState<Guardian | undefined>(guardian);
   
@@ -83,6 +85,16 @@ export function EditStudentModal({ student, guardian, allGuardians = [], canDele
   const [guardianSearch, setGuardianSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Form states for creating a new guardian
+  const [showCreateGuardianModal, setShowCreateGuardianModal] = useState(false);
+  const [newGuardianForm, setNewGuardianForm] = useState({
+    nombre_completo: '',
+    telefono: '',
+    direccion: '',
+    parentesco: 'Madre',
+  });
+  const [isCreatingGuardian, setIsCreatingGuardian] = useState(false);
 
   const searchResults = useMemo(() => {
     if (!guardianSearch.trim()) return [];
@@ -99,20 +111,55 @@ export function EditStudentModal({ student, guardian, allGuardians = [], canDele
     setShowDropdown(false);
   };
 
-  const handleQuickCreateGuardian = () => {
-    if (!guardianSearch.trim()) return;
-    const newG: Guardian = {
-      id: `grd_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-      nombre_completo: guardianSearch,
-      telefono: 'Pendiente',
-      direccion: 'Pendiente',
-      parentesco: 'Acudiente'
-    };
-    setSelectedGuardian(newG);
-    setFormData({ ...formData, guardian_id: newG.id });
-    setGuardianSearch('');
+  const handleOpenCreateGuardianModal = (prefilledName?: string) => {
+    setNewGuardianForm({
+      nombre_completo: prefilledName || guardianSearch.trim(),
+      telefono: '',
+      direccion: '',
+      parentesco: 'Madre',
+    });
+    setShowCreateGuardianModal(true);
     setShowDropdown(false);
-    toast.success('Acudiente creado rápidamente. Recuerde completar sus datos en el módulo de Acudientes.');
+  };
+
+  const handleSaveNewGuardian = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGuardianForm.nombre_completo.trim() || !newGuardianForm.telefono.trim() || !newGuardianForm.direccion.trim()) {
+      toast.error('Por favor complete todos los datos obligatorios del acudiente.');
+      return;
+    }
+
+    setIsCreatingGuardian(true);
+    try {
+      const newG: Guardian = {
+        id: `grd_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        nombre_completo: newGuardianForm.nombre_completo.trim(),
+        telefono: newGuardianForm.telefono.trim(),
+        direccion: newGuardianForm.direccion.trim(),
+        parentesco: newGuardianForm.parentesco || 'Madre',
+      };
+
+      const success = await saveGuardian(newG);
+      if (!success) {
+        toast.error('No se pudo guardar el acudiente en el sistema.');
+        return;
+      }
+
+      allGuardians.push(newG);
+      if (onNewGuardianCreated) {
+        onNewGuardianCreated(newG);
+      }
+      setSelectedGuardian(newG);
+      setFormData({ ...formData, guardian_id: newG.id });
+      setShowCreateGuardianModal(false);
+      setGuardianSearch('');
+      setShowDropdown(false);
+      toast.success(`Acudiente "${newG.nombre_completo}" registrado y asignado exitosamente.`);
+    } catch (err: any) {
+      toast.error('Error al registrar acudiente: ' + (err?.message || String(err)));
+    } finally {
+      setIsCreatingGuardian(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,7 +269,17 @@ export function EditStudentModal({ student, guardian, allGuardians = [], canDele
           </div>
 
           <div className="border-t border-slate-100 pt-4">
-            <h4 className="font-bold text-slate-700 text-sm mb-3">Asignación de Acudiente</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-bold text-slate-700 text-sm">Asignación de Acudiente</h4>
+              <button
+                type="button"
+                onClick={() => handleOpenCreateGuardianModal()}
+                className="text-xs font-bold text-[#fc7609] hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>+ Registrar Nuevo Acudiente</span>
+              </button>
+            </div>
             
             {/* Acudiente Actual */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between mb-4">
@@ -234,6 +291,9 @@ export function EditStudentModal({ student, guardian, allGuardians = [], canDele
                   <div>
                     <p className="text-sm font-bold text-slate-800">{selectedGuardian.nombre_completo}</p>
                     <p className="text-[10px] text-slate-500 font-medium">{selectedGuardian.parentesco} | {selectedGuardian.telefono}</p>
+                    {selectedGuardian.direccion && selectedGuardian.direccion !== 'Pendiente' && (
+                      <p className="text-[10px] text-slate-400 truncate max-w-xs">{selectedGuardian.direccion}</p>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -283,10 +343,10 @@ export function EditStudentModal({ student, guardian, allGuardians = [], canDele
                     <div className="p-3 border-b border-slate-50 text-sm text-slate-500 text-center">No se encontraron coincidencias.</div>
                   )}
                   
-                  {/* Creación Rápida */}
+                  {/* Botón para abrir formulario de creación */}
                   <button 
                     type="button" 
-                    onClick={handleQuickCreateGuardian}
+                    onClick={() => handleOpenCreateGuardianModal(guardianSearch)}
                     className="w-full text-left p-3 hover:bg-orange-100 flex items-center justify-between bg-orange-50 text-[#fc7609] font-semibold text-sm transition-colors"
                   >
                     <span>Crear nuevo acudiente "{guardianSearch}"</span>
@@ -323,6 +383,102 @@ export function EditStudentModal({ student, guardian, allGuardians = [], canDele
           </div>
         </form>
       </div>
+
+      {/* Modal para Crear Nuevo Acudiente */}
+      {showCreateGuardianModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-60 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden my-8 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center">
+              <h3 className="font-extrabold text-lg text-slate-800 font-display flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-[#fc7609]" />
+                Registrar Nuevo Acudiente
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setShowCreateGuardianModal(false)} 
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewGuardian} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre Completo *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Ej: María Pérez García"
+                  value={newGuardianForm.nombre_completo} 
+                  onChange={e => setNewGuardianForm({ ...newGuardianForm, nombre_completo: e.target.value })} 
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Teléfono / WhatsApp *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Ej: 3101234567"
+                    value={newGuardianForm.telefono} 
+                    onChange={e => setNewGuardianForm({ ...newGuardianForm, telefono: e.target.value })} 
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Parentesco</label>
+                  <select 
+                    value={newGuardianForm.parentesco} 
+                    onChange={e => setNewGuardianForm({ ...newGuardianForm, parentesco: e.target.value })} 
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium"
+                  >
+                    <option value="Madre">Madre</option>
+                    <option value="Padre">Padre</option>
+                    <option value="Abuela / Abuelo">Abuela / Abuelo</option>
+                    <option value="Tía / Tío">Tía / Tío</option>
+                    <option value="Hermana / Hermano">Hermana / Hermano</option>
+                    <option value="Tutor Legal">Tutor Legal</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Dirección de Residencia *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Ej: Cra 8 # 12-34 Barrio Centro"
+                  value={newGuardianForm.direccion} 
+                  onChange={e => setNewGuardianForm({ ...newGuardianForm, direccion: e.target.value })} 
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium" 
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowCreateGuardianModal(false)} 
+                  className="px-4 py-2 text-slate-500 hover:text-slate-700 font-bold text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isCreatingGuardian}
+                  className="px-5 py-2.5 bg-[#fc7609] text-white font-bold rounded-xl shadow-md shadow-orange-500/20 hover:bg-orange-600 transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {isCreatingGuardian ? 'Guardando...' : 'Guardar y Asignar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Click outside to close dropdown hack */}
       {showDropdown && <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)}></div>}

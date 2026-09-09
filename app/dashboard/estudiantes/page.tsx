@@ -366,6 +366,7 @@ export default function EstudiantesPage() {
           onClose={() => setEditStudent(null)} 
           onSave={handleUpdateStudent}
           onDelete={handleDeleteStudent}
+          onNewGuardianCreated={(newG) => setDbGuardians(prev => [...prev, newG])}
         />
       )}
 
