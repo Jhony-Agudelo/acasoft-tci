@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Search, PlusCircle, Calendar, Printer, Share2, AlertTriangle, TrendingDown, TrendingUp, Users, X } from 'lucide-react';
-import { Payment, Student, Guardian, Expense, User, UserRole, StudentStatus, Transfer } from '@/lib/db-schema';
+import { Payment, Student, Guardian, Expense, User, UserRole, StudentStatus, Transfer, Course } from '@/lib/db-schema';
 import { getPayments, savePayment } from '@/lib/actions/payment.actions';
 import { getStudents, saveStudent } from '@/lib/actions/student.actions';
 import { getGuardians } from '@/lib/actions/guardian.actions';
 import { getExpenses, saveExpense } from '@/lib/actions/expense.actions';
 import { getUsers } from '@/lib/actions/user.actions';
 import { getTransfers, saveTransfer } from '@/lib/actions/transfer.actions';
+import { getCourses } from '@/lib/actions/course.actions';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -25,6 +26,7 @@ export default function PagosPage() {
   const [dbExpenses, setDbExpenses] = useState<Expense[]>([]);
   const [dbUsers, setDbUsers] = useState<User[]>([]);
   const [dbTransfers, setDbTransfers] = useState<Transfer[]>([]);
+  const [dbCourses, setDbCourses] = useState<Course[]>([]);
 
   // Month Filter
   const [selectedMonth, setSelectedMonth] = useState<string>('');
@@ -55,14 +57,24 @@ export default function PagosPage() {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [currentReceiptData, setCurrentReceiptData] = useState<{ payment: Payment, student: Student } | null>(null);
 
+  const getCourseName = (student?: Student | null) => {
+    if (!student) return '';
+    const courseId = student.course_id || student.curso_actual;
+    if (!courseId || courseId === 'N/A') return '';
+    const course = dbCourses.find(c => c.id === courseId || c.nombre_curso === courseId);
+    if (course) return course.nombre_curso;
+    return !courseId.startsWith('crs_') ? courseId : '';
+  };
+
   useEffect(() => {
-    Promise.all([getPayments(), getStudents(), getGuardians(), getExpenses(), getUsers(), getTransfers()]).then(([payments, students, guardians, expenses, users, transfers]) => {
+    Promise.all([getPayments(), getStudents(), getGuardians(), getExpenses(), getUsers(), getTransfers(), getCourses()]).then(([payments, students, guardians, expenses, users, transfers, courses]) => {
       setDbPayments(payments);
       setDbStudents(students);
       setDbGuardians(guardians);
       setDbExpenses(expenses);
       setDbUsers(users);
       setDbTransfers(transfers);
+      setDbCourses(courses);
       setLoading(false);
     });
   }, []);
@@ -113,8 +125,105 @@ export default function PagosPage() {
     }
   };
 
+  const printPOSReceipt = (receiptHtml: string) => {
+    let iframe = document.getElementById('pos-print-iframe') as HTMLIFrameElement | null;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'pos-print-iframe';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '58mm';
+      iframe.style.height = '100px';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html lang="es">
+        <head>
+          <meta charset="utf-8" />
+          <title>Factura POS</title>
+          <style>
+            @page {
+              size: 58mm auto;
+              margin: 0mm;
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+              color: #000000 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            html, body {
+              width: 58mm !important;
+              max-width: 58mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              font-family: 'Courier New', Courier, monospace !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            #pos-receipt {
+              display: block !important;
+              width: 48mm !important;
+              max-width: 48mm !important;
+              margin: 0 !important;
+              padding: 1mm 0 3mm 0 !important;
+              color: #000000 !important;
+              background: #ffffff !important;
+              font-family: 'Courier New', Courier, monospace !important;
+              font-size: 8.5px;
+              line-height: 1.25;
+            }
+            #pos-receipt * {
+              color: #000000 !important;
+              border-color: #000000 !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="pos-receipt">
+            ${receiptHtml}
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe?.contentWindow?.focus();
+        iframe?.contentWindow?.print();
+      } catch (e) {
+        console.error('Print error:', e);
+        window.print();
+      }
+    }, 250);
+  };
+
   const handlePrintPOS = () => {
-    window.print();
+    const receiptEl = document.getElementById('pos-receipt-content');
+    if (receiptEl) {
+      printPOSReceipt(receiptEl.innerHTML);
+    } else {
+      window.print();
+    }
   };
 
   const handleShareWhatsApp = async () => {
@@ -710,23 +819,52 @@ ${receiptLink}
       {currentReceiptData && (
         <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
           {/* Modal Actions */}
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 relative print:hidden">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 relative max-h-[92vh] overflow-y-auto">
             <button onClick={() => setCurrentReceiptData(null)} className="absolute top-4 right-4 text-slate-400 hover:bg-slate-100 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
 
-            <div className="text-center mb-8 mt-4">
-              <div className="bg-emerald-100 text-emerald-600 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Printer className="h-8 w-8" />
+            <div className="text-center mb-3 mt-1">
+              <div className="bg-emerald-100 text-emerald-600 h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Printer className="h-6 w-6" />
               </div>
-              <h3 className="font-extrabold text-2xl text-slate-800 font-display">Factura Generada</h3>
-              <p className="text-slate-500 text-sm mt-2">La factura ha sido diseñada en alta calidad. Selecciona una opción para continuar.</p>
+              <h3 className="font-extrabold text-xl text-slate-800 font-display">Factura de Pago</h3>
+              <p className="text-slate-500 text-xs mt-0.5">Comprobante térmico para impresora POS.</p>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <button onClick={handleShareWhatsApp} disabled={isSubmitting} className="w-full bg-[#fc7609] hover:bg-orange-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/30">
-                <Share2 className="h-5 w-5" /> Enviar recibo
+            {/* VISTA PREVIA COMPACTA EN PANTALLA */}
+            {(() => {
+              const guardian = dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id);
+              const receiptId = currentReceiptData.payment.id.split('_')[1] || currentReceiptData.payment.id;
+              const mesPagado = currentReceiptData.payment.mes_pagado
+                ? new Date(currentReceiptData.payment.mes_pagado + '-02T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+                : null;
+              const courseName = getCourseName(currentReceiptData.student);
+
+              return (
+                <div className="mx-auto bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-3 mb-4 text-[11px] font-mono text-slate-800 shadow-inner max-w-[240px]">
+                  <div className="text-center font-bold text-xs uppercase mb-0.5">Taller Creativo de Inglés</div>
+                  <div className="text-center text-[10px] text-slate-500 mb-1.5">NIT. 1.007.220.836 • Fac #{receiptId}</div>
+                  <div className="border-t border-b border-dashed border-slate-300 py-1.5 my-1.5 space-y-0.5">
+                    <div className="truncate"><strong>Estudiante:</strong> {currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}</div>
+                    {courseName && <div className="truncate"><strong>Curso:</strong> {courseName}</div>}
+                    <div><strong>Fecha:</strong> {currentReceiptData.payment.payment_date}</div>
+                    <div className="truncate"><strong>Concepto:</strong> {currentReceiptData.payment.period_covered}</div>
+                    {mesPagado && <div className="capitalize text-slate-500">Mes: {mesPagado}</div>}
+                  </div>
+                  <div className="flex justify-between items-center font-bold text-sm text-[#fc7609] pt-1">
+                    <span>TOTAL:</span>
+                    <span>${currentReceiptData.payment.amount.toLocaleString('es-CO')}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 text-right">Medio: {currentReceiptData.payment.payment_method || 'Efectivo'}</div>
+                </div>
+              );
+            })()}
+
+            <div className="flex flex-col gap-2.5">
+              <button onClick={handlePrintPOS} disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-slate-900/20 cursor-pointer text-sm">
+                <Printer className="h-4 w-4" /> Imprimir Factura POS
               </button>
-              <button onClick={handlePrintPOS} disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-slate-900/20">
-                <Printer className="h-5 w-5" /> Imprimir Factura
+              <button onClick={handleShareWhatsApp} disabled={isSubmitting} className="w-full bg-[#fc7609] hover:bg-orange-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/30 cursor-pointer text-sm">
+                <Share2 className="h-4 w-4" /> Enviar por WhatsApp
               </button>
             </div>
           </div>
@@ -793,34 +931,127 @@ ${receiptLink}
             </div>
           </div>
 
-          {/* POS INVOICE FOR PHYSICAL PRINTER */}
-          <div id="pos-receipt" className="hidden print:block absolute top-0 left-0 bg-white text-black w-full max-w-[300px]" style={{ fontFamily: 'monospace', padding: '10px' }}>
-            <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
-              <h1 className="font-bold text-xl uppercase">Taller Creativo</h1>
-              <h2 className="font-bold text-lg uppercase">De Inglés</h2>
-              <p className="text-xs">NIT. 1.007.220.836</p>
-            </div>
-            <div className="mb-4 text-sm border-b border-black pb-2 border-dashed">
-              <p><strong>Factura:</strong> N° {currentReceiptData.payment.id.split('_')[1]}</p>
-              <p><strong>Fecha:</strong> {currentReceiptData.payment.payment_date}</p>
-            </div>
-            <div className="mb-4 text-sm border-b border-black pb-2 border-dashed">
-              <p><strong>Estudiante:</strong> {currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}</p>
-              <p><strong>Documento:</strong> {currentReceiptData.student.documento_identidad}</p>
-            </div>
-            <div className="mb-4 text-sm border-b border-black pb-2 border-dashed">
-              <p><strong>Acudiente:</strong> {dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id)?.nombre_completo || 'N/A'}</p>
-            </div>
-            <div className="mb-4 text-sm border-b border-black pb-2 border-dashed">
-              <p><strong>Concepto:</strong> {currentReceiptData.payment.period_covered}</p>
-              <p><strong>Medio:</strong> {currentReceiptData.payment.payment_method || 'Efectivo'}</p>
-              <p className="mt-2 text-right text-lg font-bold">TOTAL: ${currentReceiptData.payment.amount.toLocaleString('es-CO')}</p>
-            </div>
-            <div className="text-center text-xs">
-              <p className="font-bold text-lg">¡Gracias por confiar en Taller Creativo De Inglés!</p>
-              <p className="text-[#64748b] text-sm font-medium">Conserve este recibo digital para cualquier duda.</p>
-            </div>
-          </div>
+          {/* HIDDEN POS TEMPLATE READ BY PRINT FUNCTION */}
+          {(() => {
+            const guardian = dbGuardians.find(g => g.id === currentReceiptData.student.guardian_id);
+            const receiptId = currentReceiptData.payment.id.split('_')[1] || currentReceiptData.payment.id;
+            const mesPagado = currentReceiptData.payment.mes_pagado
+              ? new Date(currentReceiptData.payment.mes_pagado + '-02T12:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+              : null;
+            const courseName = getCourseName(currentReceiptData.student);
+
+            return (
+              <div id="pos-receipt-content" style={{ display: 'none' }}>
+                {/* ENCABEZADO */}
+                <div style={{ textAlign: 'center', marginBottom: '3px' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '10.5px', textTransform: 'uppercase', lineHeight: '1.2' }}>
+                    TALLER CREATIVO<br />DE INGLÉS
+                  </div>
+                  <div style={{ fontSize: '8px', marginTop: '1px' }}>NIT. 1.007.220.836</div>
+                  <div style={{ fontSize: '8px' }}>La Virginia, Risaralda</div>
+                  <div
+                    style={{
+                      fontSize: '8.5px',
+                      fontWeight: 'bold',
+                      marginTop: '3px',
+                      borderTop: '1px dashed #000',
+                      borderBottom: '1px dashed #000',
+                      padding: '2px 0',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Factura de Venta / Recibo
+                  </div>
+                </div>
+
+                {/* DATOS DE FACTURA Y CLIENTE */}
+                <div style={{ fontSize: '8.5px', marginBottom: '3px', borderBottom: '1px dashed #000', paddingBottom: '3px', lineHeight: '1.25' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span><strong>Factura:</strong> #{receiptId}</span>
+                    <span><strong>Fecha:</strong> {currentReceiptData.payment.payment_date}</span>
+                  </div>
+                  <div style={{ marginTop: '1px', wordBreak: 'break-word' }}>
+                    <strong>Estudiante:</strong> {currentReceiptData.student.nombres} {currentReceiptData.student.apellidos}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1px' }}>
+                    <span><strong>Doc:</strong> {currentReceiptData.student.documento_identidad}</span>
+                    {courseName && (
+                      <span style={{ maxWidth: '55%', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={courseName}>
+                        <strong>Curso:</strong> {courseName}
+                      </span>
+                    )}
+                  </div>
+                  {guardian && (
+                    <div style={{ marginTop: '1px' }}>
+                      <div style={{ wordBreak: 'break-word' }}>
+                        <strong>Acudiente:</strong> {guardian.nombre_completo}
+                      </div>
+                      {guardian.telefono && (
+                        <div><strong>Tel:</strong> {guardian.telefono}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* TABLA DE DETALLES (FORMATO FACTURA POS COMPACTO) */}
+                <div style={{ marginBottom: '3px', borderBottom: '1px dashed #000', paddingBottom: '3px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '8.5px', borderBottom: '1px solid #000', paddingBottom: '1px', marginBottom: '2px' }}>
+                    <span>CANT / DESCRIPCIÓN</span>
+                    <span>TOTAL</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '3px', fontSize: '8.5px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ wordBreak: 'break-word' }}>1 x {currentReceiptData.payment.period_covered}</div>
+                      {mesPagado && (
+                        <div style={{ fontSize: '8px', textTransform: 'capitalize' }}>
+                          Mes: {mesPagado}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      ${currentReceiptData.payment.amount.toLocaleString('es-CO')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* TOTALES */}
+                <div style={{ fontSize: '8.5px', marginBottom: '3px', borderBottom: '1px dashed #000', paddingBottom: '3px', lineHeight: '1.25' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
+                    <span>Subtotal:</span>
+                    <span>${currentReceiptData.payment.amount.toLocaleString('es-CO')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
+                    <span>Descuento:</span>
+                    <span>$0</span>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      borderTop: '1px solid #000',
+                      paddingTop: '2px',
+                      marginTop: '2px',
+                    }}
+                  >
+                    <span>TOTAL PAGADO:</span>
+                    <span>${currentReceiptData.payment.amount.toLocaleString('es-CO')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', fontSize: '8px' }}>
+                    <span>Medio: {currentReceiptData.payment.payment_method || 'Efectivo'}</span>
+                    <span>Estado: PAGADO</span>
+                  </div>
+                </div>
+
+                {/* PIE DE FACTURA */}
+                <div style={{ textAlign: 'center', fontSize: '8px', lineHeight: '1.2', marginTop: '3px' }}>
+                  <div style={{ fontWeight: 'bold' }}>¡Gracias por confiar en TCI!</div>
+                  <div>Conserve este comprobante para cualquier duda.</div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -862,14 +1093,6 @@ ${receiptLink}
           </div>
         </div>
       )}
-
-      <style jsx global>{`
-        @media print {
-          body * { visibility: hidden; }
-          #pos-receipt, #pos-receipt * { visibility: visible; }
-          #pos-receipt { position: absolute; left: 0; top: 0; margin: 0; padding: 0; width: 100%; }
-        }
-      `}</style>
     </div>
   );
 }
